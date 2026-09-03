@@ -23,13 +23,12 @@ export type { CoreConfig, DynamicCoreConfig } from 'p2p-media-loader-core'
  * 字段名与 p2p-media-loader 的 CoreConfig 完全一致，浅合并进 core
  */
 export interface P2PTrackerOptions {
-  /** WebTorrent tracker 地址列表，如 ['wss://tracker.example.com']；不配置时沿用官方默认公共 tracker。注意 Safari 仅使用第一个 */
+  /** WebTorrent tracker 地址列表；不配置时沿用 p2p-media-loader 官方默认公共 tracker */
   announceTrackers?: string[]
   /** WebRTC STUN/TURN 配置；自建 ICE 服务时覆盖默认的公共 STUN */
   rtcConfig?: RTCConfiguration
 }
 
-/** UI 层组件开关组 */
 /**
  * 设置开关组单项显示配置（未指定的项默认显示）
  */

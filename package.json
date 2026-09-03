@@ -64,10 +64,11 @@
     "hls.js": "^1.7.0"
   },
   "devDependencies": {
+    "@types/node": "^26.4.1",
     "artplayer": "^5.4.0",
-    "hls.js": "^1.7.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "hls.js": "^1.7.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
   },
   "keywords": [
     "artplayer",

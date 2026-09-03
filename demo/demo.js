@@ -121,15 +121,28 @@
     if (options.stats === false) parts.push('stats:false')
     if (options.ui === false) {
       parts.push('ui:false')
-    } else if (options.ui && options.ui.setting) {
+    } else if (options.ui && options.ui.setting !== undefined) {
       parts.push('setting:' + JSON.stringify(options.ui.setting))
     }
     if (options.core && options.core.swarmId) parts.push('swarmId:自定义')
-    if (options.tracker) parts.push('tracker:' + options.tracker.announce.length + '个')
-    if (options.hlsjsConfig) parts.push('maxBufferLength:' + options.hlsjsConfig.maxBufferLength)
+    if (options.tracker) parts.push('tracker:' + options.tracker.announceTrackers.length + '个')
+    if (options.hls) parts.push('maxBufferLength:' + options.hls.maxBufferLength)
     if (options.type) parts.push('type:' + options.type)
     if (options.fatalRetryMax !== undefined) parts.push('fatalRetryMax:' + options.fatalRetryMax)
     return parts.length ? parts.join(' · ') : '默认配置'
+  }
+
+  /**
+   * 读取表单中插件注册的格式名有效值
+   *
+   * customType 的查找键是宿主 option.type（urlMix 以 option.type 优先于
+   * URL 扩展名），宿主与插件必须使用同一个名字，否则回调永不触发；
+   * 空值收敛为默认名，供宿主选项与插件选项共用
+   *
+   * @returns {string} 有效的 customType 格式名
+   */
+  function resolveTypeName() {
+    return $('opt-type').value.trim() || 'm3u8'
   }
 
   /** 按页面表单构建插件选项（仅显式传非默认值，忠实演示配置项语义） */
@@ -167,19 +180,19 @@
       .split(/[\s,]+/)
       .map(function (item) { return item.trim() })
       .filter(Boolean)
-    if (trackers.length) options.tracker = { announce: trackers }
+    if (trackers.length) options.tracker = { announceTrackers: trackers }
 
     // hls.js 透传配置
     var buffer = Number($('opt-buffer').value)
-    if (buffer > 0 && buffer !== 30) options.hlsjsConfig = { maxBufferLength: buffer }
+    if (buffer > 0 && buffer !== 30) options.hls = { maxBufferLength: buffer }
 
-    // 插件行为
-    var type = $('opt-type').value.trim()
-    if (type && type !== 'm3u8') options.type = type
+    // 插件行为（type 省略时插件默认同 m3u8，宿主侧由 resolveTypeName 对齐）
+    var type = resolveTypeName()
+    if (type !== 'm3u8') options.type = type
     var retryRaw = $('opt-retry').value.trim()
     if (retryRaw !== '') {
       var retry = Number(retryRaw)
-      if (retry >= 0 && retry !== 3) options.fatalRetryMax = retry
+      if (retry >= 0 && retry !== 2) options.fatalRetryMax = retry
     }
 
     return options
@@ -263,11 +276,37 @@
     var art = new Artplayer({
       container: '#player',
       url: url,
-      type: 'm3u8',
+      // 与插件 customType 注册名保持一致：urlMix 按 option.type 查回调，名字脱节则 P2P 不接管
+      type: resolveTypeName(),
+
+      // 播放行为：自动播放需静音（浏览器自动播放策略），内联播放利于移动端
       autoplay: true,
-      // 浏览器自动播放策略要求：静音播放全平台放行
       muted: true,
+      playsInline: true,
+
+      // UI 能力：全屏 / 画中画 / 截图 / 倍速 / 画面比例 / 翻转 / 设置面板
       setting: true,
+      fullscreen: true,
+      fullscreenWeb: true,
+      miniProgressBar: true,
+      pip: true,
+      screenshot: true,
+      playbackRate: true,
+      aspectRatio: true,
+      flip: true,
+      airplay: true,
+
+      // 移动端能力：手势控制、锁定按钮、全屏自动旋转
+      lock: true,
+      gesture: true,
+      autoOrientation: true,
+
+      // 键盘快捷键（空格 / 方向键）；官方守卫：输入框聚焦时不响应，demo 表单无冲突
+      hotkey: true,
+
+      // 主题色与页面 Halo 主色一致
+      theme: '#5b6bff',
+
       plugins: [artplayerPluginP2P(pluginOptions)],
     })
     window.art = art
