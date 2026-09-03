@@ -1,0 +1,57 @@
+# npm 发布工作流（OIDC Trusted Publishers，免长期凭证）
+#
+# 发布纪律：版本号写入 package.json → 提交 → 打同名 tag（v 前缀 + 版本号）→ 推送 tag 触发本工作流。
+# 信任来源：npmjs.com 包设置中登记的 Trusted Publisher（仓库 + 本工作流文件名），
+# 与 GitHub OIDC 身份断言匹配后换取一次性短时发布令牌，全程不落盘任何 token / secret。
+name: Publish Package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# OIDC 身份断言必需；contents 仅需只读（检出代码）
+permissions:
+  id-token: write
+  contents: read
+
+# 同一 tag 的发布任务串行排队，绝不自动取消进行中的发布（中途取消有半发布风险）
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # 必须使用 GitHub 托管 runner（自托管 runner 不支持 OIDC 身份断言）
+    runs-on: ubuntu-latest
+    # 防止异常卡死长期占用 runner
+    timeout-minutes: 15
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 安装 Node
+        uses: actions/setup-node@v6
+        with:
+          # Node 24 自带 npm ≥ 11.5.1，满足 Trusted Publishers 的 CLI 门槛（Node ≥ 22.14）
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          # 发布构建禁用依赖缓存，保证产物可复现（官方建议）
+          package-manager-cache: false
+
+      - name: 校验 tag 与 package.json 版本一致
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::tag $GITHUB_REF_NAME 与 package.json version $PKG_VERSION 不一致，请核对后再推送"
+            exit 1
+          fi
+
+      - name: 安装依赖
+        run: npm ci
+
+      # publish 自动触发 prepublishOnly（typecheck + build + test），此处不重复执行；
+      # 不设置任何 NODE_AUTH_TOKEN，npm CLI 自动检测 OIDC 环境并交换一次性发布令牌
+      - name: 发布到 npmjs.com
+        run: npm publish

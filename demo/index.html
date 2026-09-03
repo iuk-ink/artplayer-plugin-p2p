@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>artplayer-plugin-p2p · P2P 验证台</title>
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- 设计系统样式表（只读源，规则：不直接修改） -->
+  <link rel="stylesheet" href="styles/system.css" />
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+  <!-- 顶部导航（sticky） -->
+  <header class="page-nav">
+    <div class="container">
+      <div class="nav-left">
+        <a href="#" class="brand-row" aria-label="artplayer-plugin-p2p">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">artplayer-plugin-p2p<span class="brand-suffix"> / demo</span></span>
+        </a>
+      </div>
+      <div class="nav-right">
+        <a
+          class="nav-pill nav-pill-github"
+          href="https://github.com/iuk-ink/artplayer-plugin-p2p"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <i data-lucide="github"></i>GitHub
+        </a>
+        <span class="nav-pill">IIFE 接入</span>
+        <span class="nav-pill">Halo · 引用</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- 播放器与控制台 -->
+    <section class="section section-first">
+      <div class="container">
+        <header class="section-head">
+          <span class="eyebrow">P2P Verify Console</span>
+          <h2>无损动态开关 · 实时验证台</h2>
+          <p>
+            通过 option.plugins 注入即可为 m3u8 启用 P2P 分发。右键播放器体验「P2P 统计」面板，
+            双标签页打开本页观察 peer 互联；所有开关均经运行时动态配置无损切换，不销毁实例、不中断播放。
+          </p>
+        </header>
+
+        <div class="player-panel">
+          <div class="panel-bar">
+            <div class="dots" aria-hidden="true">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
+            <span class="title">artplayer / m3u8 · P2P</span>
+            <span class="panel-state">
+              <span class="badge-dot" data-tone="danger" id="player-state-dot"></span>
+              <span class="t-body-sm" id="player-state-text">未创建</span>
+            </span>
+          </div>
+
+          <div class="player-shell">
+            <div id="player"></div>
+          </div>
+
+          <div class="control-deck">
+            <div class="control-row">
+              <div class="field grow">
+                <label class="field-label" for="stream-a">流地址 A · m3u8</label>
+                <input class="input mono" id="stream-a" spellcheck="false"
+                  value="https://fcc3ddae59ed.us-west-2.playback.live-video.net/api/video/v1/us-west-2.893648527354.channel.DmumNckWFTqz.m3u8" />
+              </div>
+              <button class="btn btn-primary" type="button" id="btn-switch">
+                <i data-lucide="arrow-left-right"></i><span id="btn-switch-text">换源到 B</span>
+              </button>
+            </div>
+            <div class="control-row">
+              <div class="field grow">
+                <label class="field-label" for="stream-b">流地址 B · m3u8</label>
+                <input class="input mono" id="stream-b" spellcheck="false"
+                  value="https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8" />
+              </div>
+            </div>
+            <div class="control-row">
+              <button class="btn btn-secondary" type="button" id="btn-reload">
+                <i data-lucide="refresh-cw"></i>reload
+              </button>
+              <button class="btn btn-danger" type="button" id="btn-destroy">
+                <i data-lucide="trash-2"></i>销毁
+              </button>
+              <button class="btn btn-primary" type="button" id="btn-create">
+                <i data-lucide="plus"></i>创建
+              </button>
+            </div>
+          </div>
+
+          <p class="panel-hint t-body-sm">
+            验收指引：双标签页打开本页观察 peers ≥ 1 与 P2P 占比上升；设置面板或「句柄直控」切换开关——
+            播放不中断、peers 归零、下行转纯 HTTP，重新开启后渐进恢复；换源后开关与面板保持；
+            DevTools → Network → WS 在销毁后应无残留连接。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 监控面板 -->
+    <section class="section">
+      <div class="container">
+        <header class="section-head">
+          <span class="eyebrow">Monitor</span>
+          <h2>对照统计与句柄直控</h2>
+          <p>
+            外部每秒轮询 getStats()，与播放器内「P2P 统计」面板数值逐项对照（验收⑩）；
+            直控按钮经 handle.setP2PEnabled / setUploadEnabled 走无损动态切换，与设置面板开关等价。
+          </p>
+        </header>
+
+        <div class="stat-strip">
+          <article class="stat-tile stat-sm" data-tone="info">
+            <div class="stat-head">
+              <span class="stat-eyebrow">Peers / 峰值</span>
+              <i data-lucide="users" class="stat-icon"></i>
+            </div>
+            <div class="stat-value" id="stat-peers">—</div>
+            <div class="stat-meta">
+              <span class="chip" data-tone="neutral" id="stat-peers-chip">idle</span>
+              <svg class="stat-spark" viewBox="0 0 96 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="0,26 14,24 28,26 42,20 56,22 70,16 84,18 96,10" />
+              </svg>
+            </div>
+          </article>
+
+          <article class="stat-tile stat-sm" data-tone="success">
+            <div class="stat-head">
+              <span class="stat-eyebrow">P2P 下行 / 占比</span>
+              <i data-lucide="share-2" class="stat-icon"></i>
+            </div>
+            <div class="stat-value" id="stat-p2p">—</div>
+            <div class="stat-meta">
+              <span class="chip" data-tone="success" id="stat-p2p-chip">—</span>
+              <svg class="stat-spark" viewBox="0 0 96 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="0,24 14,22 28,24 42,18 56,20 70,12 84,14 96,6" />
+              </svg>
+            </div>
+          </article>
+
+          <article class="stat-tile stat-sm">
+            <div class="stat-head">
+              <span class="stat-eyebrow">HTTP 下行</span>
+              <i data-lucide="cloud-download" class="stat-icon"></i>
+            </div>
+            <div class="stat-value" id="stat-http">—</div>
+            <div class="stat-meta">
+              <span class="chip" data-tone="neutral" id="stat-http-chip">—</span>
+              <svg class="stat-spark" viewBox="0 0 96 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="0,20 14,22 28,18 42,22 56,16 70,20 84,14 96,18" />
+              </svg>
+            </div>
+          </article>
+
+          <article class="stat-tile stat-sm" data-tone="warning">
+            <div class="stat-head">
+              <span class="stat-eyebrow">P2P 上行 / 速率</span>
+              <i data-lucide="upload" class="stat-icon"></i>
+            </div>
+            <div class="stat-value" id="stat-upload">—</div>
+            <div class="stat-meta">
+              <span class="chip" data-tone="warning" id="stat-upload-chip">—</span>
+              <svg class="stat-spark" viewBox="0 0 96 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="0,22 14,20 28,24 42,18 56,20 70,14 84,16 96,10" />
+              </svg>
+            </div>
+          </article>
+        </div>
+
+        <div class="work-row">
+          <!-- 句柄直控 -->
+          <div class="work-panel">
+            <div class="panel-top">
+              <h3>句柄直控</h3>
+              <span class="chip" data-tone="neutral">handle API</span>
+            </div>
+            <div class="state-list">
+              <div class="state-item">
+                <span class="state-name">P2P 加速</span>
+                <span class="chip" data-tone="success" id="handle-p2p">—</span>
+              </div>
+              <div class="state-item">
+                <span class="state-name">上传开关</span>
+                <span class="chip" data-tone="success" id="handle-upload">—</span>
+              </div>
+              <div class="state-item">
+                <span class="state-name">累计总下行</span>
+                <span class="state-mono" id="stat-total">—</span>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-secondary btn-sm" type="button" id="btn-toggle-p2p">
+                <i data-lucide="toggle-left"></i>toggle P2P
+              </button>
+              <button class="btn btn-secondary btn-sm" type="button" id="btn-toggle-upload">
+                <i data-lucide="toggle-left"></i>toggle 上传
+              </button>
+            </div>
+            <span class="field-help">与播放器设置面板开关等价；切换即时生效且不断流。</span>
+          </div>
+
+          <!-- 插件配置：全量配置项演示 -->
+          <div class="work-panel">
+            <div class="panel-top">
+              <h3>插件配置</h3>
+              <span class="chip" data-tone="neutral">重建生效</span>
+            </div>
+
+            <div class="cfg-group">
+              <span class="cfg-title">总闸与展示</span>
+              <div class="cfg-fields">
+                <label class="check"><input type="checkbox" id="opt-ui" checked />ui（UI 总闸）</label>
+                <label class="check"><input type="checkbox" id="opt-stats" checked />stats（统计面板）</label>
+              </div>
+            </div>
+
+            <div class="cfg-group">
+              <span class="cfg-title">设置开关组 · 按项显示（ui.setting）</span>
+              <div class="cfg-fields">
+                <label class="check"><input type="checkbox" id="opt-set-p2p" checked />「P2P 加速」开关</label>
+                <label class="check"><input type="checkbox" id="opt-set-upload" checked />「仅上传模式」开关</label>
+                <label class="check"><input type="checkbox" id="opt-set-stats" checked />「P2P 统计」开关</label>
+              </div>
+            </div>
+
+            <div class="cfg-group">
+              <span class="cfg-title">核心开关</span>
+              <div class="cfg-fields">
+                <label class="check"><input type="checkbox" id="opt-enabled" checked />enabled（初始 P2P）</label>
+                <label class="check"><input type="checkbox" id="opt-upload" checked />uploadEnabled（初始上传）</label>
+              </div>
+            </div>
+
+            <div class="cfg-group">
+              <span class="cfg-title">P2P 网络（core / tracker）</span>
+              <div class="cfg-fields">
+                <div class="field">
+                  <label class="field-label" for="opt-swarmid">swarmId · 留空默认取流地址</label>
+                  <input class="input mono" id="opt-swarmid" spellcheck="false" placeholder="artplayer-plugin-p2p-demo" />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="opt-tracker">tracker announce · 逗号分隔</label>
+                  <input class="input mono" id="opt-tracker" spellcheck="false" placeholder="wss://tracker.openwebtorrent.com" />
+                </div>
+              </div>
+            </div>
+
+            <div class="cfg-group">
+              <span class="cfg-title">hls.js 与插件行为</span>
+              <div class="cfg-fields">
+                <div class="field">
+                  <label class="field-label" for="opt-buffer">hlsjsConfig.maxBufferLength</label>
+                  <input class="input mono" id="opt-buffer" type="number" min="1" value="30" />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="opt-type">type（customType 名）</label>
+                  <input class="input mono" id="opt-type" spellcheck="false" value="m3u8" />
+                </div>
+                <div class="field">
+                  <label class="field-label" for="opt-retry">fatalRetryMax</label>
+                  <input class="input mono" id="opt-retry" type="number" min="0" value="3" />
+                </div>
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-primary btn-sm" type="button" id="btn-apply-config">
+                <i data-lucide="rotate-ccw"></i>应用（重建播放器）
+              </button>
+            </div>
+            <span class="field-help">
+              验收⑪：关闭 ui / stats 或隐藏全部设置开关后重建，P2P UI 消失而对照统计仍持续工作。
+            </span>
+          </div>
+        </div>
+
+        <!-- 事件日志 -->
+        <div class="work-panel log-panel">
+          <div class="panel-top">
+            <h3>事件日志</h3>
+            <span class="chip" data-tone="neutral" id="log-count">0</span>
+          </div>
+          <div class="log" id="log" aria-live="polite" aria-label="P2P 事件日志">
+            <span class="log-empty">等待事件…</span>
+          </div>
+          <span class="field-help">覆盖 15 个 p2p:* 引擎事件、p2p:stateChange、p2p:fatalError 与播放器生命周期事件。</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="container">
+      <div class="foot-left">
+        <span class="brand-row">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">artplayer-plugin-p2p</span>
+        </span>
+      </div>
+      <span class="foot-copy">
+        验收⑤：fatal 重建后开关状态保持——需真实网络错误触发，可在 DevTools 断网数秒后恢复观察。
+      </span>
+    </div>
+  </footer>
+
+  <!-- 依赖与插件：传统 <script> 加载，插件为 dist IIFE 构建产物（黑盒验证交付路径，内含 hls.js） -->
+  <script src="https://cdn.jsdelivr.net/npm/artplayer@5.4.0/dist/artplayer.js"></script>
+  <!-- 插件产物：构建时自动同步至 demo/vendor，demo 目录完全自包含（双击即可打开） -->
+  <script src="vendor/artplayer-plugin-p2p.iife.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="demo.js" defer></script>
+</body>
+</html>

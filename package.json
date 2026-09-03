@@ -1,0 +1,83 @@
+{
+  "name": "artplayer-plugin-p2p",
+  "version": "1.0.0",
+  "description": "P2P media streaming plugin for ArtPlayer, powered by p2p-media-loader (hls.js engine)",
+  "license": "MIT",
+  "author": {
+    "name": "iuk-ink"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iuk-ink/artplayer-plugin-p2p.git"
+  },
+  "homepage": "https://github.com/iuk-ink/artplayer-plugin-p2p#readme",
+  "bugs": {
+    "url": "https://github.com/iuk-ink/artplayer-plugin-p2p/issues"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.ts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./pure": {
+      "types": {
+        "import": "./dist/pure.d.mts",
+        "require": "./dist/pure.d.ts"
+      },
+      "import": "./dist/pure.mjs",
+      "require": "./dist/pure.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/artplayer-plugin-p2p.iife.js",
+  "jsdelivr": "./dist/artplayer-plugin-p2p.iife.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test-plugin.mjs",
+    "test:pure": "node scripts/test-pure.mjs",
+    "smoke:dist": "node --conditions=p2pml:core-as-bundle scripts/smoke-dist.mjs",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "p2p-media-loader-core": "^4.0.0",
+    "p2p-media-loader-hlsjs": "^4.0.0"
+  },
+  "peerDependencies": {
+    "artplayer": ">=5.0.0",
+    "hls.js": "^1.7.0"
+  },
+  "devDependencies": {
+    "artplayer": "^5.4.0",
+    "hls.js": "^1.7.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "artplayer",
+    "p2p",
+    "p2p-media-loader",
+    "hls",
+    "hls.js",
+    "webrtc",
+    "video",
+    "player",
+    "plugin"
+  ]
+}
