@@ -7,6 +7,9 @@
 import type { CoreConfig } from 'p2p-media-loader-core'
 import type { HlsConfig } from 'hls.js'
 
+/** 场景预设名：直播（live）与点播（vod）各有一组推荐 core 参数 */
+export type ScenePresetName = 'live' | 'vod'
+
 /**
  * 信令服务器（Tracker）配置组
  *
@@ -46,6 +49,8 @@ export interface P2PUIOptions {
 export interface P2POptions {
   /** customType 注册的格式名，默认 'm3u8' */
   type?: string
+  /** 场景预设：展开为一组推荐 core 参数（默认 → 预设 → 用户 core 依次覆盖），与 core 逐字段浅合并 */
+  preset?: ScenePresetName
   /** 信令服务器配置组，与 core 配置浅合并（本组优先） */
   tracker?: P2PTrackerOptions
   /** 完整 core 配置透传（Partial<CoreConfig>）；其中 isP2PDisabled / isP2PUploadDisabled 由插件开关状态接管 */

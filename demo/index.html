@@ -307,6 +307,23 @@
           </div>
         </div>
 
+        <!-- 节点拓扑（事件流自聚合的 peers 网络图，纯 demo 层实现） -->
+        <div class="work-panel topo-panel">
+          <div class="panel-top">
+            <h3>节点拓扑</h3>
+            <span class="chip" data-tone="neutral" id="topo-count">0 peers</span>
+          </div>
+          <svg id="peer-topology" viewBox="0 0 640 280" role="img" aria-label="P2P 节点拓扑图"></svg>
+          <div class="topo-legend">
+            <span class="topo-legend-item"><span class="topo-swatch is-self"></span>SELF（本机）</span>
+            <span class="topo-legend-item"><span class="topo-swatch is-origin"></span>源站（HTTP）</span>
+            <span class="topo-legend-item"><span class="topo-swatch is-peer"></span>P2P 节点</span>
+            <span class="topo-legend-item"><span class="topo-line"></span>活跃连线</span>
+            <span class="topo-legend-item"><span class="topo-line is-idle"></span>空闲 / 断开</span>
+          </div>
+          <span class="field-help">节点由 p2p:peerConnect / peerClose 事件驱动，连线亮度映射近 1.5 秒内的传输活动；悬停节点查看详情。</span>
+        </div>
+
         <!-- 事件日志 -->
         <div class="work-panel log-panel">
           <div class="panel-top">

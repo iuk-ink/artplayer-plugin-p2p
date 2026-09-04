@@ -482,6 +482,148 @@ body {
   color: var(--color-info);
 }
 
+/* ---- 节点拓扑（SVG 网络图：token 取色 + 活跃脉冲 + 图例） ---- */
+
+.topo-panel {
+  background: var(--color-surface);
+  /* 与 .work-row 的底部节奏对称：拓扑面板与后续事件日志之间保持卡间距离 */
+  margin-bottom: var(--space-4);
+}
+
+.topo-panel svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background-color: var(--color-background);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
+}
+
+.topo-edge {
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5;
+}
+
+.topo-edge.is-active {
+  stroke: var(--color-primary);
+  stroke-width: 2.5;
+}
+
+.topo-edge.is-closing {
+  stroke: var(--color-text-muted);
+  stroke-dasharray: 4 3;
+}
+
+.topo-node circle {
+  fill: var(--color-elevated);
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5;
+}
+
+.topo-node text {
+  fill: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  dominant-baseline: middle;
+}
+
+.topo-node.is-origin circle {
+  stroke-dasharray: 5 3;
+}
+
+.topo-node.is-self circle {
+  fill: var(--color-primary-soft);
+  stroke: var(--color-primary);
+  stroke-width: 2;
+}
+
+.topo-node.is-self .is-self-label {
+  fill: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.topo-node.is-self .is-self-peers {
+  fill: var(--color-text-secondary);
+  font-size: 10px;
+}
+
+/* SELF 的实时速率置于圆外下方：速率字符串长度随单位变化，
+   圆内摆放必然随数值增长溢出圆界 */
+.topo-self-rate {
+  fill: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.topo-node.is-peer.is-active circle {
+  stroke: var(--color-info);
+  animation: topo-pulse 0.9s ease-out;
+}
+
+.topo-node.is-closing {
+  opacity: 0.35;
+}
+
+@keyframes topo-pulse {
+  0% {
+    stroke-width: 4;
+  }
+
+  100% {
+    stroke-width: 1.5;
+  }
+}
+
+.topo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.topo-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topo-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-elevated);
+  border: 1.5px solid var(--color-border-strong);
+}
+
+.topo-swatch.is-self {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.topo-swatch.is-origin {
+  border-style: dashed;
+}
+
+.topo-swatch.is-peer {
+  border-color: var(--color-info);
+}
+
+.topo-line {
+  display: inline-block;
+  width: 18px;
+  border-top: 2.5px solid var(--color-primary);
+}
+
+.topo-line.is-idle {
+  border-top-width: 1.5px;
+  border-top-color: var(--color-border-strong);
+}
+
 /* ---- 页脚 ---- */
 
 .foot {

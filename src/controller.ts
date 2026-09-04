@@ -29,11 +29,15 @@ import type { StateChangeDetails } from './types/events'
 /** 控制器状态：idle 未创建 / active 播放中 / destroyed 播放器已销毁 */
 export type ControllerState = 'idle' | 'active' | 'destroyed'
 
+/** 实例创建函数类型（默认为真实引擎工厂，测试可注入假体） */
+type CreateInstance = typeof createHlsWithP2P
+
 /** P2P 实例生命周期控制器 */
 export class P2PController {
   readonly #art: Artplayer
   readonly #options: ResolvedOptions
   readonly #stats: P2PStatsEngine
+  readonly #createInstance: CreateInstance
 
   #state: ControllerState = 'idle'
   #p2pEnabled: boolean
@@ -50,13 +54,21 @@ export class P2PController {
    * @param art - ArtPlayer 实例
    * @param options - 解析后的插件选项（p2pEnabled / uploadEnabled 为初始开关状态）
    * @param stats - 统计引擎实例（由入口层创建并共享给句柄）
+   * @param createInstance - 实例创建工厂（默认真实引擎；测试注入假体
+   *   以验证状态机编排，真实引擎在 Node 下的构造依赖面与此目标无关）
    */
-  constructor(art: Artplayer, options: ResolvedOptions, stats: P2PStatsEngine) {
+  constructor(
+    art: Artplayer,
+    options: ResolvedOptions,
+    stats: P2PStatsEngine,
+    createInstance: CreateInstance = createHlsWithP2P,
+  ) {
     this.#art = art
     this.#options = options
     this.#stats = stats
     this.#p2pEnabled = options.p2pEnabled
     this.#uploadEnabled = options.uploadEnabled
+    this.#createInstance = createInstance
   }
 
   /** 当前控制器状态 */
@@ -181,7 +193,7 @@ export class P2PController {
       },
     }
 
-    const instance = createHlsWithP2P(engineOptions, Hls, hooks)
+    const instance = this.#createInstance(engineOptions, Hls, hooks)
 
     instance.loadSource(url)
     instance.attachMedia(video)

@@ -40,6 +40,7 @@ export type {
   P2PTrackerOptions,
   P2PUIOptions,
   P2PSettingItemsOptions,
+  ScenePresetName,
   P2PPluginHandle,
   P2PStats,
   DownloadChannel,
@@ -53,8 +54,9 @@ export {
   DEFAULT_FATAL_RETRY_MAX,
   BANDWIDTH_WINDOW_MS,
   STATS_POLLING_MS,
+  SCENE_PRESETS,
 } from './constants'
-export { resolveOptions, mergeCoreConfig, applyRuntimeToggle } from './config'
+export { resolveOptions, mergeCoreConfig, applyRuntimeToggle, applyScenePreset } from './config'
 export { FatalRecoveryPolicy } from './recovery'
 export { createHlsWithP2P } from './engine'
 export type { EngineHooks, EngineOptions } from './engine'

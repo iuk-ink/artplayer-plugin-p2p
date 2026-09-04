@@ -1,4 +1,4 @@
-import { C as P2P_EVENT_BRIDGE_MAP, S as I18N_MESSAGES, _ as I18N_KEY_STATE_DISABLED, a as P2PStatsEngine, b as I18N_KEY_STATS, c as DEFAULT_TYPE, d as I18N_KEY_PANEL_DOWNLOAD, f as I18N_KEY_PANEL_RATIO, g as I18N_KEY_PEERS_UNIT, h as I18N_KEY_PANEL_UPLOAD, i as StatsTicker, l as I18N_KEY_FATAL_NOTICE, m as I18N_KEY_PANEL_TOTAL, n as mergeCoreConfig, o as BANDWIDTH_WINDOW_MS, p as I18N_KEY_PANEL_STATE, r as resolveOptions, s as DEFAULT_FATAL_RETRY_MAX, t as applyRuntimeToggle, u as I18N_KEY_P2P_ENABLED, v as I18N_KEY_STATE_RUNNING, w as STATS_POLLING_MS, x as I18N_KEY_UPLOAD_ONLY, y as I18N_KEY_STATE_UPLOAD_ONLY } from "./config-qatiYUaJ.mjs";
+import { C as I18N_MESSAGES, E as STATS_POLLING_MS, S as I18N_KEY_UPLOAD_ONLY, T as SCENE_PRESETS, _ as I18N_KEY_PEERS_UNIT, a as StatsTicker, b as I18N_KEY_STATE_UPLOAD_ONLY, c as DEFAULT_FATAL_RETRY_MAX, d as I18N_KEY_P2P_ENABLED, f as I18N_KEY_PANEL_DOWNLOAD, g as I18N_KEY_PANEL_UPLOAD, h as I18N_KEY_PANEL_TOTAL, i as resolveOptions, l as DEFAULT_TYPE, m as I18N_KEY_PANEL_STATE, n as applyScenePreset, o as P2PStatsEngine, p as I18N_KEY_PANEL_RATIO, r as mergeCoreConfig, s as BANDWIDTH_WINDOW_MS, t as applyRuntimeToggle, u as I18N_KEY_FATAL_NOTICE, v as I18N_KEY_STATE_DISABLED, w as P2P_EVENT_BRIDGE_MAP, x as I18N_KEY_STATS, y as I18N_KEY_STATE_RUNNING } from "./config-X6eAP82h.mjs";
 import Hls from "hls.js";
 import { HlsJsP2PEngine } from "p2p-media-loader-hlsjs";
 //#region src/bridge.ts
@@ -157,6 +157,7 @@ var P2PController = class {
 	#art;
 	#options;
 	#stats;
+	#createInstance;
 	#state = "idle";
 	#p2pEnabled;
 	#uploadEnabled;
@@ -171,13 +172,16 @@ var P2PController = class {
 	* @param art - ArtPlayer 实例
 	* @param options - 解析后的插件选项（p2pEnabled / uploadEnabled 为初始开关状态）
 	* @param stats - 统计引擎实例（由入口层创建并共享给句柄）
+	* @param createInstance - 实例创建工厂（默认真实引擎；测试注入假体
+	*   以验证状态机编排，真实引擎在 Node 下的构造依赖面与此目标无关）
 	*/
-	constructor(art, options, stats) {
+	constructor(art, options, stats, createInstance = createHlsWithP2P) {
 		this.#art = art;
 		this.#options = options;
 		this.#stats = stats;
 		this.#p2pEnabled = options.p2pEnabled;
 		this.#uploadEnabled = options.uploadEnabled;
+		this.#createInstance = createInstance;
 	}
 	/** 当前控制器状态 */
 	get state() {
@@ -268,14 +272,15 @@ var P2PController = class {
 	* @param video - 视频元素
 	*/
 	#start(url, video) {
-		const instance = createHlsWithP2P({
+		const engineOptions = {
 			core: this.#options.core,
 			tracker: this.#options.tracker,
 			hls: this.#options.hls,
 			fatalRetryMax: this.#options.fatalRetryMax,
 			p2pEnabled: this.#p2pEnabled,
 			uploadEnabled: this.#uploadEnabled
-		}, Hls, {
+		};
+		const instance = this.#createInstance(engineOptions, Hls, {
 			onEngineCreated: (engine) => {
 				attachEventBridge(this.#art, engine, this.#stats);
 			},
@@ -782,8 +787,10 @@ const EXPANDED_CLASS = "artp2p-badge-expanded";
 * 徽章结构模板：速览行（状态点 + 数据文本）+ 可展开详情区
 *
 * 详情区为 grid 行轨道容器（0fr ↔ 1fr 过渡驱动高度动画），
-* 内层 overflow hidden 承载三行详情；行 label 为静态文案
-* （挂载时经 i18n 解析一次），数值单元格由统计心跳刷新
+* 内层 overflow hidden 承载三行详情；行 label 为静态文案：
+* 占比 / 累计流量在挂载时经 i18n 解析一次（与设置项 / 面板
+* 标题同时机），Peers 为通用术语不设键、字面量直书，与右键
+* 面板的同位标题保持一致；数值单元格由统计心跳刷新
 */
 const BADGE_HTML = `
 <div class="artp2p-badge" role="button" aria-expanded="false" tabindex="0">
@@ -1183,4 +1190,4 @@ Object.defineProperty(artplayerPluginP2P, "DEBUG", {
 	set: (value) => setDebugEnabled(Boolean(value))
 });
 //#endregion
-export { BANDWIDTH_WINDOW_MS, DEFAULT_FATAL_RETRY_MAX, DEFAULT_TYPE, FatalRecoveryPolicy, P2PController, P2PStatsEngine, P2P_EVENT_BRIDGE_MAP, STATS_POLLING_MS, StatsTicker, applyRuntimeToggle, createHlsWithP2P, artplayerPluginP2P as default, mergeCoreConfig, resolveOptions };
+export { BANDWIDTH_WINDOW_MS, DEFAULT_FATAL_RETRY_MAX, DEFAULT_TYPE, FatalRecoveryPolicy, P2PController, P2PStatsEngine, P2P_EVENT_BRIDGE_MAP, SCENE_PRESETS, STATS_POLLING_MS, StatsTicker, applyRuntimeToggle, applyScenePreset, createHlsWithP2P, artplayerPluginP2P as default, mergeCoreConfig, resolveOptions };

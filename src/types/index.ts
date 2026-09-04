@@ -12,6 +12,7 @@ export type {
   P2PTrackerOptions,
   P2PUIOptions,
   P2PSettingItemsOptions,
+  ScenePresetName,
 } from './options'
 export type { P2PPluginHandle, P2PPluginFactory, DynamicCoreConfig } from './handle'
 export type { StateChangeDetails } from './events'

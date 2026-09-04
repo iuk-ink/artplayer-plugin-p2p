@@ -3,11 +3,12 @@
  *
  * 覆盖无浏览器依赖的核心逻辑：
  * 1. resolveOptions：默认值填充与 stats / ui / badge 降级兼容矩阵
- * 2. mergeCoreConfig：core 与 tracker 浅合并优先级
- * 3. applyRuntimeToggle：运行时开关对 core 同名字段的接管语义
- * 4. P2PStatsEngine：分类累加 / 非负保护 / 派生指标 / 重置语义
- * 5. BandwidthCalculator：滑动窗口速率与过期清理
- * 6. 事件映射表：键数量与前缀约定（类型穷尽性由编译期 satisfies 保证）
+ * 2. 场景预设：preset 展开 / 用户 core 覆盖优先 / 未知名静默忽略
+ * 3. mergeCoreConfig：core 与 tracker 浅合并优先级
+ * 4. applyRuntimeToggle：运行时开关对 core 同名字段的接管语义
+ * 5. P2PStatsEngine：分类累加 / 非负保护 / 派生指标 / 重置语义
+ * 6. BandwidthCalculator：滑动窗口速率与过期清理
+ * 7. 事件映射表：键数量与前缀约定（类型穷尽性由编译期 satisfies 保证）
  *
  * 结果输出到 output/test-pure-<时间戳>.json，进程自动退出
  */
@@ -22,6 +23,7 @@ import {
   resolveOptions,
   mergeCoreConfig,
   applyRuntimeToggle,
+  applyScenePreset,
   BandwidthCalculator,
   P2PStatsEngine,
 } from '../dist/pure.mjs'
@@ -144,6 +146,40 @@ function testResolveOptions() {
     uploadOnly: false,
     stats: false,
   })
+
+  // 场景预设：展开 / 覆盖优先级 / 透传边界
+  const presetLive = resolveOptions({ preset: 'live' })
+  recordFields('preset: live 展开推荐参数', presetLive.core ?? {}, {
+    highDemandTimeWindow: 30,
+    p2pDownloadTimeWindow: 8000,
+  })
+
+  const presetVod = resolveOptions({ preset: 'vod' })
+  recordFields('preset: vod 展开推荐参数', presetVod.core ?? {}, {
+    highDemandTimeWindow: 60,
+    httpDownloadTimeWindow: 5000,
+  })
+
+  const presetOverride = resolveOptions({ preset: 'live', core: { highDemandTimeWindow: 10 } })
+  recordFields('preset: 用户 core 同名字段覆盖预设', presetOverride.core ?? {}, {
+    highDemandTimeWindow: 10,
+    p2pDownloadTimeWindow: 8000,
+  })
+
+  const presetMerge = resolveOptions({ preset: 'vod', core: { swarmId: 'sw-1' } })
+  recordFields('preset: 用户 core 异名字段与预设并存', presetMerge.core ?? {}, {
+    swarmId: 'sw-1',
+    highDemandTimeWindow: 60,
+  })
+
+  const noPreset = resolveOptions({ core: { highDemandTimeWindow: 15 } })
+  recordFields('preset: 省略时 core 原样透传', noPreset.core ?? {}, { highDemandTimeWindow: 15 })
+
+  const unknownPreset = applyScenePreset('invalid', { swarmId: 'sw-2' })
+  record('preset: 未知名静默忽略保持原配置', unknownPreset !== undefined && unknownPreset.swarmId === 'sw-2' && unknownPreset.highDemandTimeWindow === undefined, unknownPreset)
+
+  const bothEmpty = applyScenePreset(undefined, undefined)
+  record('preset: 无预设无配置保持 undefined', bothEmpty === undefined, bothEmpty)
 }
 
 /** resolveOptions：badge 徽章选项解析与门控 */

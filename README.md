@@ -86,6 +86,7 @@ IIFE 与 ESM（importmap）两种接入形态、无损动态开关、界面文�
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `type` | `string` | `'m3u8'` | customType 注册的格式名（换源重入的识别键） |
+| `preset` | `'live' \| 'vod'` | — | 场景预设：展开为一组推荐 core 参数（默认 → 预设 → 用户 `core` 依次覆盖），见下方调参建议 |
 | `enabled` | `boolean` | `true` | P2P 加速初始状态 |
 | `uploadEnabled` | `boolean` | `true` | 上传开关初始状态（false = 仅下载） |
 | `stats` | `boolean` | `true` | 统计展示总开关：右键「P2P 统计」入口 + 面板 + 右上角徽章；false 时仅可编程读取 |
@@ -99,6 +100,11 @@ IIFE 与 ESM（importmap）两种接入形态、无损动态开关、界面文�
 
 > `core` 的动态子集（时间窗 / 超时 / 并发数 / 开关等）可经句柄 `applyDynamicConfig()` 在播放中调整；
 > `swarmId` 等静态属性由 p2p-media-loader 防篡改，hls.js 配置仅在实例创建时生效。
+
+调参建议：不了解 P2P 参数时先用 `preset` 起步（`live` 拉长高需求窗口至 30s 并给 P2P
+更多首发窗口；`vod` 拉长高需求窗口至 60s 并放宽 HTTP 窗口降低源站压力），预设值基于
+上游默认与场景语义推导，属「推荐起点」——同名字段在用户 `core` 中配置即覆盖预设，
+建议按实际带宽与卡顿表现微调。
 
 ### UI 选项 `P2PUIOptions`
 
@@ -200,6 +206,28 @@ art.on('p2p:stateChange', ({ p2pEnabled, uploadEnabled }) => { /* ... */ })
 | 信令 | `p2p:trackerError` `p2p:trackerWarning` |
 | 插件自身 | `p2p:stateChange`（开关切换）`p2p:fatalError`（fatal 通知与重建耗尽）`p2p:statsTick`（统计心跳快照 1Hz 推送） |
 
+## 生产部署 · 分片安全
+
+P2P 分片来自网络中的其他播放节点，默认**不做内容校验**（信任链与源站 HTTP 下发不同）。
+上游 p2p-media-loader 提供校验钩子，经插件 `core` 配置透传即可启用；推荐仅校验 P2P 通道
+（HTTP 通道来自可信源站，一般无需校验）：
+
+```js
+artplayerPluginP2P({
+  core: {
+    validateP2PSegment: async (url, byteRange, data) => {
+      // 防线一：长度上限，拒绝异常超大的分片
+      if (data.byteLength > 8 * 1024 * 1024) return false
+      // 防线二：格式魔数（MPEG-TS 分片以 0x47 同步字节开头；fMP4 流请按 box 头校验）
+      return new DataView(data).getUint8(0) === 0x47
+    },
+  },
+})
+```
+
+钩子返回 `false` 时该分片被丢弃、下载回退其他通道；校验逻辑应保持轻量
+（每个分片执行一次，位于播放热路径）。
+
 ## 纯逻辑入口
 
 ```js
@@ -212,8 +240,8 @@ import { resolveOptions, applyRuntimeToggle, P2PStatsEngine, StatsTicker } from 
 
 ```bash
 npm install        # 仅允许 npm 安装（preinstall 守卫，防包管理器混装）
-npm run build      # 构建（rolldown，原子落盘；IIFE 自动同步至 demo/vendor，demo.ts 转译）
-npm test           # 聚合测试（pure 单测 + UI 装配矩阵 + README 一致性 + 产物冒烟；需先 npm run build）
+npm run build      # 构建（rolldown，原子落盘；IIFE 自动同步至 demo/vendor 与 examples/vendor）
+npm test           # 聚合测试（pure 单测 + 控制器状态机 + UI 装配矩阵 + README 一致性 + 产物冒烟；需先 npm run build）
 npm run typecheck  # 类型检查（src + demo）
 ```
 

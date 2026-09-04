@@ -31,8 +31,10 @@ const EXPANDED_CLASS = 'artp2p-badge-expanded'
  * 徽章结构模板：速览行（状态点 + 数据文本）+ 可展开详情区
  *
  * 详情区为 grid 行轨道容器（0fr ↔ 1fr 过渡驱动高度动画），
- * 内层 overflow hidden 承载三行详情；行 label 为静态文案
- * （挂载时经 i18n 解析一次），数值单元格由统计心跳刷新
+ * 内层 overflow hidden 承载三行详情；行 label 为静态文案：
+ * 占比 / 累计流量在挂载时经 i18n 解析一次（与设置项 / 面板
+ * 标题同时机），Peers 为通用术语不设键、字面量直书，与右键
+ * 面板的同位标题保持一致；数值单元格由统计心跳刷新
  */
 const BADGE_HTML = `
 <div class="artp2p-badge" role="button" aria-expanded="false" tabindex="0">

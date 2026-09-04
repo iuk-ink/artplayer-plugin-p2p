@@ -4,13 +4,36 @@
  * @module constants
  */
 
-import type { CoreEventMap } from 'p2p-media-loader-core'
+import type { CoreConfig, CoreEventMap } from 'p2p-media-loader-core'
+import type { ScenePresetName } from './types/options'
 
 /** customType 注册的默认格式名 */
 export const DEFAULT_TYPE = 'm3u8'
 
 /** fatal 错误销毁重建的默认最大次数 */
 export const DEFAULT_FATAL_RETRY_MAX = 2
+
+/**
+ * 场景预设的推荐 core 参数
+ *
+ * 基于上游默认值（highDemandTimeWindow 15s / httpDownloadTimeWindow
+ * 3s / p2pDownloadTimeWindow 6s）与场景语义推导的「推荐起点」，
+ * 供用户在其上按实际带宽微调，并非普适最优解：
+ * - live：直播消费即时性强、历史段无复用价值，拉长高需求窗口保障
+ *   连续供给的调度提前量，并给 P2P 更多首发机会（时效内即可分发）
+ * - vod：点播缓冲诉求更深且用户 seek 频繁，拉长高需求窗口提升
+ *   缓冲深度，放宽 HTTP 窗口让位 P2P 首选、降低源站压力
+ */
+export const SCENE_PRESETS: Readonly<Record<ScenePresetName, Partial<CoreConfig>>> = {
+  live: {
+    highDemandTimeWindow: 30,
+    p2pDownloadTimeWindow: 8000,
+  },
+  vod: {
+    highDemandTimeWindow: 60,
+    httpDownloadTimeWindow: 5000,
+  },
+}
 
 /**
  * 插件 UI 文案的 i18n 键（中文原文即键）

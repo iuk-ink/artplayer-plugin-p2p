@@ -13,8 +13,9 @@ export {
   DEFAULT_FATAL_RETRY_MAX,
   BANDWIDTH_WINDOW_MS,
   STATS_POLLING_MS,
+  SCENE_PRESETS,
 } from './constants'
-export { resolveOptions, mergeCoreConfig, applyRuntimeToggle } from './config'
+export { resolveOptions, mergeCoreConfig, applyRuntimeToggle, applyScenePreset } from './config'
 export { BandwidthCalculator } from './bandwidth'
 export { P2PStatsEngine } from './stats'
 export { StatsTicker } from './stats-tick'
@@ -31,4 +32,5 @@ export type {
   StateChangeDetails,
   DynamicCoreConfig,
   CoreConfig,
+  ScenePresetName,
 } from './types/index'

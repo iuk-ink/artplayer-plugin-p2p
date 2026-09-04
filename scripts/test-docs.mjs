@@ -126,6 +126,19 @@ const entryDts = readFileSync('dist/index.d.ts', 'utf8')
 record('入口 d.ts 导出面不含内部类型 ResolvedOptions', !entryDts.includes('ResolvedOptions'))
 record('入口 d.ts 导出面不含内部类型 EngineOptions', !entryDts.includes('EngineOptions'))
 
+// --- 生产安全章节的校验钩子存在于上游 core 类型 ---
+// README 文档化的透传字段若在上游更名/移除，此断言先行失败
+const securitySection = section('## 生产部署', '## 纯逻辑入口')
+const documentedHooks = [...new Set([...securitySection.matchAll(/validate(?:P2P|HTTP)Segment/g)].map(match => match[0]))]
+if (documentedHooks.length > 0 && existsSync('node_modules/p2p-media-loader-core/lib')) {
+  const upstreamDts = readdirSync('node_modules/p2p-media-loader-core/lib', { recursive: true })
+    .filter(file => String(file).endsWith('.d.ts'))
+    .map(file => readFileSync(join('node_modules/p2p-media-loader-core/lib', file), 'utf8'))
+    .join('\n')
+  const missing = documentedHooks.filter(hook => !upstreamDts.includes(hook))
+  record('安全章节校验钩子 ↔ 上游 core 类型一致', missing.length === 0, { documented: documentedHooks, missing })
+}
+
 const failed = assertions.filter(item => !item.pass)
 const report = {
   timestamp: new Date().toISOString(),

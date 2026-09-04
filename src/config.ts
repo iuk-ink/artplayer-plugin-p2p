@@ -10,8 +10,8 @@
  */
 
 import type { CoreConfig } from 'p2p-media-loader-core'
-import { DEFAULT_FATAL_RETRY_MAX, DEFAULT_TYPE } from './constants'
-import type { P2POptions, P2PSettingItemsOptions, P2PUIOptions } from './types/options'
+import { DEFAULT_FATAL_RETRY_MAX, DEFAULT_TYPE, SCENE_PRESETS } from './constants'
+import type { P2POptions, P2PSettingItemsOptions, P2PUIOptions, ScenePresetName } from './types/options'
 import type { ResolvedOptions } from './types/internal'
 
 /**
@@ -53,6 +53,27 @@ function resolveSettingItems(
 }
 
 /**
+ * 将场景预设展开进用户 core 配置
+ *
+ * 展开顺序：预设在前、用户 core 逐字段覆盖（浅合并）——
+ * 预设是「推荐起点」，用户显式配置的任何字段拥有最终决定权；
+ * 未知预设名（运行时伪造值，类型层已约束）静默忽略保持原配置
+ *
+ * @param preset - 场景预设名
+ * @param core - 用户 core 配置
+ * @returns 合并后的 core 配置（无预设且无用户配置时保持 undefined）
+ */
+export function applyScenePreset(
+  preset: ScenePresetName | undefined,
+  core: Partial<CoreConfig> | undefined,
+): Partial<CoreConfig> | undefined {
+  if (preset === undefined) return core
+  const presetConfig = SCENE_PRESETS[preset]
+  if (presetConfig === undefined) return core
+  return { ...presetConfig, ...core }
+}
+
+/**
  * 解析插件选项：填充默认值并归一化 stats / ui / badge 开关
  *
  * 仅做归一化，不修改任何透传配置的内容；
@@ -85,7 +106,7 @@ export function resolveOptions(options: P2POptions): ResolvedOptions {
     badgeEnabled: uiEnabled && options.stats !== false && options.badge === true,
     settingEnabled,
     settingItems,
-    core: options.core,
+    core: applyScenePreset(options.preset, options.core),
     tracker: options.tracker,
     hls: options.hls,
   }

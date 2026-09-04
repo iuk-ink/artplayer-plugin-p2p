@@ -71,6 +71,27 @@ const DEFAULT_TYPE = "m3u8";
 /** fatal 错误销毁重建的默认最大次数 */
 const DEFAULT_FATAL_RETRY_MAX = 2;
 /**
+* 场景预设的推荐 core 参数
+*
+* 基于上游默认值（highDemandTimeWindow 15s / httpDownloadTimeWindow
+* 3s / p2pDownloadTimeWindow 6s）与场景语义推导的「推荐起点」，
+* 供用户在其上按实际带宽微调，并非普适最优解：
+* - live：直播消费即时性强、历史段无复用价值，拉长高需求窗口保障
+*   连续供给的调度提前量，并给 P2P 更多首发机会（时效内即可分发）
+* - vod：点播缓冲诉求更深且用户 seek 频繁，拉长高需求窗口提升
+*   缓冲深度，放宽 HTTP 窗口让位 P2P 首选、降低源站压力
+*/
+const SCENE_PRESETS = {
+	live: {
+		highDemandTimeWindow: 30,
+		p2pDownloadTimeWindow: 8e3
+	},
+	vod: {
+		highDemandTimeWindow: 60,
+		httpDownloadTimeWindow: 5e3
+	}
+};
+/**
 * 插件 UI 文案的 i18n 键（中文原文即键）
 *
 * ArtPlayer 的 i18n.get 未命中时回退键本身，
@@ -348,6 +369,26 @@ function resolveSettingItems(setting) {
 	};
 }
 /**
+* 将场景预设展开进用户 core 配置
+*
+* 展开顺序：预设在前、用户 core 逐字段覆盖（浅合并）——
+* 预设是「推荐起点」，用户显式配置的任何字段拥有最终决定权；
+* 未知预设名（运行时伪造值，类型层已约束）静默忽略保持原配置
+*
+* @param preset - 场景预设名
+* @param core - 用户 core 配置
+* @returns 合并后的 core 配置（无预设且无用户配置时保持 undefined）
+*/
+function applyScenePreset(preset, core) {
+	if (preset === void 0) return core;
+	const presetConfig = SCENE_PRESETS[preset];
+	if (presetConfig === void 0) return core;
+	return {
+		...presetConfig,
+		...core
+	};
+}
+/**
 * 解析插件选项：填充默认值并归一化 stats / ui / badge 开关
 *
 * 仅做归一化，不修改任何透传配置的内容；
@@ -378,7 +419,7 @@ function resolveOptions(options) {
 		badgeEnabled: uiEnabled && options.stats !== false && options.badge === true,
 		settingEnabled,
 		settingItems,
-		core: options.core,
+		core: applyScenePreset(options.preset, options.core),
 		tracker: options.tracker,
 		hls: options.hls
 	};
@@ -419,4 +460,4 @@ function applyRuntimeToggle(config, p2pEnabled, uploadEnabled) {
 	};
 }
 //#endregion
-export { P2P_EVENT_BRIDGE_MAP as C, I18N_MESSAGES as S, BandwidthCalculator as T, I18N_KEY_STATE_DISABLED as _, P2PStatsEngine as a, I18N_KEY_STATS as b, DEFAULT_TYPE as c, I18N_KEY_PANEL_DOWNLOAD as d, I18N_KEY_PANEL_RATIO as f, I18N_KEY_PEERS_UNIT as g, I18N_KEY_PANEL_UPLOAD as h, StatsTicker as i, I18N_KEY_FATAL_NOTICE as l, I18N_KEY_PANEL_TOTAL as m, mergeCoreConfig as n, BANDWIDTH_WINDOW_MS as o, I18N_KEY_PANEL_STATE as p, resolveOptions as r, DEFAULT_FATAL_RETRY_MAX as s, applyRuntimeToggle as t, I18N_KEY_P2P_ENABLED as u, I18N_KEY_STATE_RUNNING as v, STATS_POLLING_MS as w, I18N_KEY_UPLOAD_ONLY as x, I18N_KEY_STATE_UPLOAD_ONLY as y };
+export { I18N_MESSAGES as C, BandwidthCalculator as D, STATS_POLLING_MS as E, I18N_KEY_UPLOAD_ONLY as S, SCENE_PRESETS as T, I18N_KEY_PEERS_UNIT as _, StatsTicker as a, I18N_KEY_STATE_UPLOAD_ONLY as b, DEFAULT_FATAL_RETRY_MAX as c, I18N_KEY_P2P_ENABLED as d, I18N_KEY_PANEL_DOWNLOAD as f, I18N_KEY_PANEL_UPLOAD as g, I18N_KEY_PANEL_TOTAL as h, resolveOptions as i, DEFAULT_TYPE as l, I18N_KEY_PANEL_STATE as m, applyScenePreset as n, P2PStatsEngine as o, I18N_KEY_PANEL_RATIO as p, mergeCoreConfig as r, BANDWIDTH_WINDOW_MS as s, applyRuntimeToggle as t, I18N_KEY_FATAL_NOTICE as u, I18N_KEY_STATE_DISABLED as v, P2P_EVENT_BRIDGE_MAP as w, I18N_KEY_STATS as x, I18N_KEY_STATE_RUNNING as y };

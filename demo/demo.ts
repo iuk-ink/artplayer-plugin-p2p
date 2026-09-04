@@ -34,8 +34,9 @@ declare global {
    *
    * @param id - 元素 id
    */
-  const $ = function <T extends HTMLElement = HTMLElement>(id: string): T {
-    return document.getElementById(id) as T
+  const $ = function <T extends Element = HTMLElement>(id: string): T {
+    // 页面契约保证 id 存在，非空由契约约定；宽断言承载 SVG 等非 HTML 元素
+    return document.getElementById(id) as unknown as T
   }
   const logEl = $('log')
 
@@ -250,6 +251,7 @@ declare global {
     stopStatsPolling()
     statsTickCount = 0
     setChip($('handle-tick'), '—', 'neutral')
+    resetTopology()
     setPlayerState('未创建', 'danger')
   }
 
@@ -282,6 +284,41 @@ declare global {
     art.on('p2p:statsTick', (snapshot: P2PStats) => {
       statsTickCount += 1
       setChip($('handle-tick'), '#' + statsTickCount + ' · peers ' + snapshot.peers, 'info')
+      // 拓扑图与心跳同拍重绘（速率文本与活跃态刷新）
+      topologySnapshot = snapshot
+      renderTopology()
+    })
+
+    // 节点拓扑数据接线：事件驱动更新聚合状态，图形渲染固定由心跳同拍驱动
+    // （chunk 级事件高频，仅改数据不做即时重绘）
+    art.on('p2p:peerConnect', (details: { peerId: string }) => {
+      const existing = topologyPeers.get(details.peerId)
+      if (existing) {
+        existing.closingSince = undefined
+      } else {
+        topologyPeers.set(details.peerId, { downloaded: 0, uploaded: 0, connectedAt: Date.now(), lastActive: Date.now() })
+      }
+    })
+    art.on('p2p:peerClose', (details: { peerId: string }) => {
+      const peer = topologyPeers.get(details.peerId)
+      if (peer) peer.closingSince = Date.now()
+    })
+    art.on('p2p:chunkDownloaded', (bytes: number, source: string, peerId?: string) => {
+      // HTTP 分片无归属节点（peerId 缺省），流量归源站连线语义
+      if (source !== 'p2p' || peerId === undefined) return
+      const peer = topologyPeers.get(peerId)
+      if (peer) {
+        peer.downloaded += bytes
+        peer.lastActive = Date.now()
+      }
+    })
+    art.on('p2p:chunkUploaded', (bytes: number, peerId?: string) => {
+      if (peerId === undefined) return
+      const peer = topologyPeers.get(peerId)
+      if (peer) {
+        peer.uploaded += bytes
+        peer.lastActive = Date.now()
+      }
     })
 
     art.on('ready', () => {
@@ -433,6 +470,99 @@ declare global {
       statsTimer = 0
     }
     renderStats()
+  }
+
+  // ====================================================================
+  //  节点拓扑（事件流自聚合的 peers 网络图，纯 demo 层不涉插件 API）
+  // ====================================================================
+
+  /** 单个 P2P 节点的聚合状态（字节为会话累计，事件驱动更新） */
+  interface TopologyPeer {
+    downloaded: number
+    uploaded: number
+    connectedAt: number
+    lastActive: number
+    /** 进入断开流程的时间戳（灰显保留一段时间再移除，防频繁连断闪烁） */
+    closingSince?: number
+  }
+
+  /** 断开节点灰显保留时长 */
+  const TOPOLOGY_CLOSING_MS = 1000
+  /** 该时间窗内有传输的节点视为活跃（连线高亮与节点脉冲） */
+  const TOPOLOGY_ACTIVE_WINDOW_MS = 1500
+
+  let topologyPeers = new Map<string, TopologyPeer>()
+  let topologySnapshot: Pick<P2PStats, 'downloadSpeed' | 'p2pDownloadSpeed' | 'uploadSpeed'> = {
+    downloadSpeed: 0,
+    p2pDownloadSpeed: 0,
+    uploadSpeed: 0,
+  }
+
+  /**
+   * 渲染拓扑图（全量重建；节点 ≤ 上游 p2pMaxPeers 默认 50，
+   * 1Hz 重建开销可忽略，换取零 diff 的简单可靠）
+   *
+   * 布局为中心放射：SELF 居中、peers 按 id 排序后环形均分
+   * （确定性布局，刷新不跳动）、源站节点独立于左上角承接 HTTP 通道；
+   * 节点详情经原生 title 提示，悬停即可查看
+   */
+  function renderTopology(): void {
+    const svg = $<SVGSVGElement>('peer-topology')
+    const now = Date.now()
+    for (const [id, peer] of topologyPeers) {
+      if (peer.closingSince !== undefined && now - peer.closingSince > TOPOLOGY_CLOSING_MS) {
+        topologyPeers.delete(id)
+      }
+    }
+
+    const peers = [...topologyPeers.entries()].sort(([a], [b]) => a.localeCompare(b))
+    $('topo-count').textContent = peers.length + ' peers'
+
+    const cx = 320
+    const cy = 145
+    const selfR = 34
+    const ringR = peers.length > 0 ? 100 : 0
+    const httpActive = topologySnapshot.downloadSpeed > topologySnapshot.p2pDownloadSpeed
+
+    const edges: string[] = []
+    const nodes: string[] = []
+    const addEdge = (x2: number, y2: number, cls: string): void => {
+      edges.push(`<line class="topo-edge ${cls}" x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" />`)
+    }
+
+    // 源站（HTTP）连线
+    addEdge(70, 50, httpActive ? 'is-active' : 'is-idle')
+
+    // 单次遍历：连线先行入列（z-order 在节点之下）、节点随后
+    peers.forEach(([id, peer], index) => {
+      const angle = -Math.PI / 2 + (index * 2 * Math.PI) / peers.length
+      const x = cx + ringR * Math.cos(angle)
+      const y = cy + ringR * Math.sin(angle)
+      const active = peer.closingSince === undefined && now - peer.lastActive < TOPOLOGY_ACTIVE_WINDOW_MS
+      addEdge(x, y, peer.closingSince !== undefined ? 'is-closing' : active ? 'is-active' : 'is-idle')
+
+      const total = peer.downloaded + peer.uploaded
+      const radius = total >= 1024 * 1024 ? 12 : total >= 100 * 1024 ? 10 : 8
+      const title = `${id.slice(0, 10)}… · ↓ ${formatBytes(peer.downloaded)} · ↑ ${formatBytes(peer.uploaded)} · 连接 ${Math.round((now - peer.connectedAt) / 1000)}s`
+      nodes.push(`<g class="topo-node is-peer${active ? ' is-active' : ''}${peer.closingSince !== undefined ? ' is-closing' : ''}"><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${radius}" /><title>${title}</title></g>`)
+    })
+
+    // 源站节点（虚线描边区分于 P2P 节点）
+    nodes.push('<g class="topo-node is-origin"><circle cx="70" cy="50" r="22" /><text x="70" y="51" text-anchor="middle">源站</text></g>')
+
+    // SELF 节点：圆内仅放短标识与节点计数（宽度可预估不溢出），
+    // 实时速率字符串随单位变长，置于圆下方外部
+    nodes.push(`<g class="topo-node is-self"><circle cx="${cx}" cy="${cy}" r="${selfR}" /><text class="is-self-label" x="${cx}" y="${cy - 5}" text-anchor="middle">SELF</text><text class="is-self-peers" x="${cx}" y="${cy + 11}" text-anchor="middle">peers ${peers.length}</text></g>`)
+    nodes.push(`<text class="topo-self-rate" x="${cx}" y="${cy + selfR + 18}" text-anchor="middle">↓ ${formatSpeed(topologySnapshot.downloadSpeed)}</text>`)
+
+    svg.innerHTML = edges.join('') + nodes.join('')
+  }
+
+  /** 复位拓扑状态（播放器销毁时清空节点与图形） */
+  function resetTopology(): void {
+    topologyPeers = new Map()
+    topologySnapshot = { downloadSpeed: 0, p2pDownloadSpeed: 0, uploadSpeed: 0 }
+    renderTopology()
   }
 
   // ====================================================================
