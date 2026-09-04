@@ -1183,7 +1183,7 @@ function artplayerPluginP2PImpl(options = {}) {
 * 插件工厂（default 导出）：携带 DEBUG / version 静态成员
 */
 const artplayerPluginP2P = artplayerPluginP2PImpl;
-artplayerPluginP2P.version = "1.0.0";
+artplayerPluginP2P.version = "1.0.1";
 Object.defineProperty(artplayerPluginP2P, "DEBUG", {
 	enumerable: true,
 	get: () => isDebugEnabled(),
