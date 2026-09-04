@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>基础接入（IIFE） · artplayer-plugin-p2p</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; background: #101014; color: #E8EAF0; }
+    #player { width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; }
+    code { color: #8AB4FF; }
+  </style>
+</head>
+<body>
+  <h1>基础接入（IIFE）</h1>
+  <p>
+    三个 script 标签即可为 m3u8 启用 P2P 分发：ArtPlayer → 插件（IIFE 内置 hls.js）→ 初始化。
+    上线时可把本地 <code>vendor/artplayer-plugin-p2p.iife.js</code> 替换为
+    <code>https://cdn.jsdelivr.net/npm/artplayer-plugin-p2p@latest/dist/artplayer-plugin-p2p.iife.js</code>。
+  </p>
+  <div id="player"></div>
+
+  <!-- 宿主播放器（IIFE 暴露全局 Artplayer） -->
+  <script src="https://cdn.jsdelivr.net/npm/artplayer@5.4.0/dist/artplayer.js"></script>
+  <!-- 插件 IIFE（内联 hls.js 与 p2p-media-loader，全局暴露 artplayerPluginP2P） -->
+  <script src="vendor/artplayer-plugin-p2p.iife.js"></script>
+  <script>
+    const art = new Artplayer({
+      container: '#player',
+      url: 'https://fcc3ddae59ed.us-west-2.playback.live-video.net/api/video/v1/us-west-2.893648527354.channel.DmumNckWFTqz.m3u8',
+      // customType 按 option.type 查找回调，名字须与插件默认格式名一致
+      type: 'm3u8',
+      autoplay: true,
+      muted: true,
+      playsInline: true,
+      setting: true,
+      fullscreen: true,
+      plugins: [
+        artplayerPluginP2P({
+          // 右上角数据徽章（点击可展开详情）
+          badge: true,
+        }),
+      ],
+    })
+    window.art = art
+  </script>
+</body>
+</html>

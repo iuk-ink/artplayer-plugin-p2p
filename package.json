@@ -34,7 +34,9 @@
   "unpkg": "./dist/artplayer-plugin-p2p.iife.js",
   "jsdelivr": "./dist/artplayer-plugin-p2p.iife.js",
   "files": [
-    "dist"
+    "dist",
+    "examples/*.html",
+    "examples/README.md"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",

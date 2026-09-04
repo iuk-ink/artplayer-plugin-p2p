@@ -13,6 +13,64 @@ export const DEFAULT_TYPE = 'm3u8'
 export const DEFAULT_FATAL_RETRY_MAX = 2
 
 /**
+ * 插件 UI 文案的 i18n 键（中文原文即键）
+ *
+ * ArtPlayer 的 i18n.get 未命中时回退键本身，
+ * 因此中文站点零配置即显示原文；其他语言经语言包注册生效
+ */
+export const I18N_KEY_P2P_ENABLED = 'P2P 加速'
+export const I18N_KEY_UPLOAD_ONLY = '仅上传模式'
+export const I18N_KEY_STATS = 'P2P 统计'
+export const I18N_KEY_FATAL_NOTICE = 'P2P 加速恢复失败，已转为直连播放'
+
+/** 右键统计面板的行标题（Peers 为通用术语不设键） */
+export const I18N_KEY_PANEL_STATE = 'P2P 状态'
+export const I18N_KEY_PANEL_DOWNLOAD = '下行速率'
+export const I18N_KEY_PANEL_RATIO = 'P2P 占比'
+export const I18N_KEY_PANEL_UPLOAD = '上行速率'
+export const I18N_KEY_PANEL_TOTAL = '累计流量'
+
+/** 右键统计面板状态行（「仅上传」与设置项「仅上传模式」是不同文案，独立键） */
+export const I18N_KEY_STATE_RUNNING = '运行中'
+export const I18N_KEY_STATE_UPLOAD_ONLY = '仅上传'
+export const I18N_KEY_STATE_DISABLED = '已关闭'
+
+/** 右上角徽章的节点数单位 */
+export const I18N_KEY_PEERS_UNIT = '节点'
+
+/**
+ * 插件文案语言包类型
+ *
+ * 消息键为任意字符串（中文原文）；官方 I18n 类型的值键仅枚举
+ * 内置 UI 文案，运行时的 update 深合并与 get 回退对任意键生效
+ */
+export type P2PI18nMessages = Partial<Record<string, Record<string, string>>>
+
+/**
+ * 插件自带语言包（经 art.i18n.update 深合并注册）
+ *
+ * 中文无需注册（键即原文）；宿主 option.lang 匹配注册语言时
+ * 自动显示译文；宿主可在播放器创建后再次 update 覆写插件文案
+ */
+export const I18N_MESSAGES: P2PI18nMessages = {
+  en: {
+    [I18N_KEY_P2P_ENABLED]: 'P2P Acceleration',
+    [I18N_KEY_UPLOAD_ONLY]: 'Upload Only',
+    [I18N_KEY_STATS]: 'P2P Stats',
+    [I18N_KEY_FATAL_NOTICE]: 'P2P recovery failed, switched to direct playback',
+    [I18N_KEY_PANEL_STATE]: 'P2P State',
+    [I18N_KEY_PANEL_DOWNLOAD]: 'Download',
+    [I18N_KEY_PANEL_RATIO]: 'P2P Ratio',
+    [I18N_KEY_PANEL_UPLOAD]: 'Upload',
+    [I18N_KEY_PANEL_TOTAL]: 'Total Traffic',
+    [I18N_KEY_STATE_RUNNING]: 'Running',
+    [I18N_KEY_STATE_UPLOAD_ONLY]: 'Upload Only',
+    [I18N_KEY_STATE_DISABLED]: 'Disabled',
+    [I18N_KEY_PEERS_UNIT]: 'peers',
+  },
+}
+
+/**
  * 统计带宽计算的滑动时间窗长度（毫秒）
  *
  * 直播切片通常 2-6s，10 秒窗口可平滑速率抖动

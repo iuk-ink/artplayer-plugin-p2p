@@ -16,6 +16,8 @@
 		let handle = null;
 		/** 当前源标记（换源交替用） */
 		let currentSource = "A";
+		/** p2p:statsTick 事件计数（演示事件推送，不写入日志防刷屏） */
+		let statsTickCount = 0;
 		/** 对照统计轮询句柄 */
 		let statsTimer = 0;
 		/** 格式化字节数显示 */
@@ -97,6 +99,7 @@
 			if (options.uploadEnabled === false) parts.push("uploadEnabled:false");
 			if (options.stats === false) parts.push("stats:false");
 			if (options.badge) parts.push("badge:true");
+			if (options.fatalNotice) parts.push("fatalNotice:true");
 			if (options.ui === false) parts.push("ui:false");
 			else if (options.ui && typeof options.ui === "object" && options.ui.setting !== void 0) parts.push("setting:" + JSON.stringify(options.ui.setting));
 			if (options.core && options.core.swarmId) parts.push("swarmId:自定义");
@@ -126,6 +129,7 @@
 			if (!$("opt-ui").checked) options.ui = false;
 			if (!$("opt-stats").checked) options.stats = false;
 			if ($("opt-badge").checked) options.badge = true;
+			if ($("opt-fatal-notice").checked) options.fatalNotice = true;
 			if (options.ui === void 0) {
 				const items = {
 					p2pEnabled: $("opt-set-p2p").checked,
@@ -159,6 +163,8 @@
 			handle = null;
 			$("player").innerHTML = "";
 			stopStatsPolling();
+			statsTickCount = 0;
+			setChip($("handle-tick"), "—", "neutral");
 			setPlayerState("未创建", "danger");
 		}
 		/** 绑定播放器与插件的全量事件日志 */
@@ -191,6 +197,10 @@
 			art.on("p2p:fatalError", function(...args) {
 				appendLog("p2p:fatalError", stringifyArgs(args), "error");
 			});
+			art.on("p2p:statsTick", (snapshot) => {
+				statsTickCount += 1;
+				setChip($("handle-tick"), "#" + statsTickCount + " · peers " + snapshot.peers, "info");
+			});
 			art.on("ready", () => {
 				setPlayerState("播放中", "success");
 				appendLog("player:ready", "静音自动播放", "info");
@@ -219,10 +229,12 @@
 			destroyPlayer();
 			const url = currentSource === "A" ? $("stream-a").value.trim() : $("stream-b").value.trim();
 			const pluginOptions = buildOptions();
+			const lang = $("opt-lang").value;
 			const art = new Artplayer({
 				container: "#player",
 				url,
 				type: resolveTypeName(),
+				...lang ? { lang } : {},
 				autoplay: true,
 				muted: true,
 				playsInline: true,
@@ -249,7 +261,7 @@
 			updateSwitchButton();
 			bindEvents(art);
 			startStatsPolling();
-			appendLog("player:create", "源 " + currentSource + " · " + describeOptions(pluginOptions), "info");
+			appendLog("player:create", "源 " + currentSource + (lang ? " · lang=" + lang : "") + " · " + describeOptions(pluginOptions), "info");
 		}
 		/** 换源：art.url 赋值走 customType 回调（验证重入安全与模式保持） */
 		function switchSource() {
@@ -281,6 +293,7 @@
 				setChip($("handle-p2p"), "—", "neutral");
 				setChip($("handle-upload"), "—", "neutral");
 				setChip($("handle-badge"), "—", "neutral");
+				setChip($("handle-tick"), "—", "neutral");
 				return;
 			}
 			const s = handle.getStats();

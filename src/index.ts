@@ -32,7 +32,7 @@ import { P2PController } from './controller'
 import { resolveOptions } from './config'
 import { isDebugEnabled, log, setDebugEnabled } from './debug'
 import { mountUI } from './ui'
-import { STATS_POLLING_MS } from './constants'
+import { I18N_MESSAGES, STATS_POLLING_MS } from './constants'
 
 export type {
   P2PPluginFactory,
@@ -100,10 +100,27 @@ function artplayerPluginP2PImpl(options: P2POptions = {}): (art: Artplayer) => P
     // onStatsTick 共享同一数据源与启停状态
     const ticker = new StatsTicker(stats, STATS_POLLING_MS)
 
+    // 语言包注册：键为中文原文（i18n.get 未命中回退键本身，中文站点
+    // 零配置），宿主 option.lang 匹配注册语言时自动显示译文；
+    // 宿主可在创建后再次 update 覆写插件文案（后注册生效）。
+    // 官方 update 类型仅枚举内置 UI 键，而运行时对任意键生效
+    // （自定义键正是官方 d.ts 中 @ts-expect-error 的场景），
+    // 故此处断言越过键枚举限制
+    art.i18n.update(I18N_MESSAGES as Parameters<Artplayer['i18n']['update']>[0])
+    log('i18n messages registered')
+
     const badge = mountUI(art, controller, ticker, resolved)
 
-    // 播放器销毁时终止心跳（组件订阅已随各自 destroy 退订，此处兜底清空）
+    // p2p:statsTick 事件：心跳快照的推送式消费约定（与句柄
+    // onStatsTick 同源同拍）；以装配层订阅接入而非 ticker 内部
+    // 派发，保持统计心跳的纯逻辑层不依赖 art 实例
+    const unsubscribeStatsTickEvent = ticker.subscribe((snapshot) => {
+      art.emit('p2p:statsTick', snapshot)
+    })
+
+    // 播放器销毁时终止事件派发与心跳（组件订阅已随各自 destroy 退订，此处兜底清空）
     art.on('destroy', () => {
+      unsubscribeStatsTickEvent()
       ticker.destroy()
     })
 

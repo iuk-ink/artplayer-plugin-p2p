@@ -34,11 +34,13 @@ function record(name, pass, detail) {
 /**
  * 创建入口流程所需的最小 mock 播放器
  *
- * emit 记录派发事件，供 p2p:stateChange 事件断言使用
+ * emit 记录派发事件，供 p2p:stateChange 事件断言使用；
+ * i18n 记录语言包注册，供装配链断言使用
  */
 function createMockArt() {
   const customType = {}
   const events = []
+  const i18nUpdates = []
   const art = {
     option: { customType, url: '' },
     // 时序补救仅在有 option.url 且 src 为流地址时触达；提供空实现防越界
@@ -50,9 +52,15 @@ function createMockArt() {
     emit(name, ...args) {
       events.push([name, args])
     },
+    i18n: {
+      update(lang) {
+        i18nUpdates.push(lang)
+      },
+      get: key => key,
+    },
     notice: {},
   }
-  return { art, customType, events }
+  return { art, customType, events, i18nUpdates }
 }
 
 /**
@@ -62,7 +70,7 @@ function createMockArt() {
  * @param {(options: Record<string, unknown>) => (art: Record<string, unknown>) => Record<string, unknown>} factory 插件工厂
  */
 function testEntryAssembly(label, factory) {
-  const { art, customType, events } = createMockArt()
+  const { art, customType, events, i18nUpdates } = createMockArt()
 
   // 工厂静态成员（version 由构建 define 注入，DEBUG 为调试日志开关）：
   // define 缺失时模块顶层会抛 ReferenceError，此处断言提供明确报因
@@ -78,6 +86,17 @@ function testEntryAssembly(label, factory) {
   const handle = pluginFunction(art)
   record(`${label}: 句柄挂载键正确`, handle?.name === 'artplayerPluginP2P', handle?.name)
   record(`${label}: customType 已注册`, typeof customType.m3u8 === 'function', Object.keys(customType))
+
+  // i18n 注册在装配链最前端（ui: false 亦执行）：en 语言包含全部插件文案键
+  record(
+    `${label}: i18n 语言包已注册`,
+    i18nUpdates[0]?.en?.['P2P 加速'] === 'P2P Acceleration'
+      && i18nUpdates[0]?.en?.['P2P 加速恢复失败，已转为直连播放'] === 'P2P recovery failed, switched to direct playback'
+      && i18nUpdates[0]?.en?.['P2P 占比'] === 'P2P Ratio'
+      && i18nUpdates[0]?.en?.['仅上传'] === 'Upload Only'
+      && i18nUpdates[0]?.en?.['累计流量'] === 'Total Traffic',
+    i18nUpdates,
+  )
 
   const snapshot = handle.getStats()
   record(`${label}: getStats 返回初始快照`, snapshot.peers === 0 && snapshot.totalDownloadedBytes === 0 && snapshot.peakPeers === 0, snapshot)

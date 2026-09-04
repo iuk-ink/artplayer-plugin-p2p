@@ -54,6 +54,8 @@ export interface P2POptions {
   hls?: Partial<HlsConfig>
   /** fatal 错误销毁重建的最大次数，默认 2 */
   fatalRetryMax?: number
+  /** fatal 恢复耗尽时经播放器 notice 提示用户，默认 false；仅耗尽终态提示一次，编程消费仍以 p2p:fatalError 事件为准 */
+  fatalNotice?: boolean
   /** 初始 P2P 开关，默认 true；运行时可经句柄 setP2PEnabled 无损切换 */
   enabled?: boolean
   /** 初始上传开关，默认 true；运行时可经句柄 setUploadEnabled 无缝切换 */

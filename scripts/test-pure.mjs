@@ -62,6 +62,7 @@ function testResolveOptions() {
   recordFields('resolve: 全默认', defaults, {
     typeName: DEFAULT_TYPE,
     fatalRetryMax: DEFAULT_FATAL_RETRY_MAX,
+    fatalNotice: false,
     p2pEnabled: true,
     uploadEnabled: true,
     uiEnabled: true,
@@ -75,6 +76,12 @@ function testResolveOptions() {
 
   const custom = resolveOptions({ type: 'm3u8p', fatalRetryMax: 5 })
   recordFields('resolve: 自定义格式名与重建上限', custom, { typeName: 'm3u8p', fatalRetryMax: 5 })
+
+  const fatalNoticeOn = resolveOptions({ fatalNotice: true })
+  recordFields('resolve: fatalNotice 显式开启', fatalNoticeOn, { fatalNotice: true })
+
+  const fatalNoticeStrict = resolveOptions({ fatalNotice: 1 })
+  recordFields('resolve: fatalNotice 非布尔真值不开启', fatalNoticeStrict, { fatalNotice: false })
 
   const uiFalse = resolveOptions({ ui: false })
   recordFields('resolve: ui=false 总闸全关', uiFalse, {

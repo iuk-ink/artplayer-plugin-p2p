@@ -9,7 +9,7 @@
  * 对照统计轮询（与播放器内面板数值核对）、全量事件日志
  */
 
-import type { P2PPluginHandle, P2POptions } from '../src/types/index'
+import type { P2PPluginHandle, P2POptions, P2PStats } from '../src/types/index'
 
 /** CDN script 注入的全局播放器构造器（demo 不做强类型化宿主） */
 declare const Artplayer: any
@@ -43,6 +43,8 @@ declare global {
   let handle: P2PPluginHandle | null = null
   /** 当前源标记（换源交替用） */
   let currentSource: 'A' | 'B' = 'A'
+  /** p2p:statsTick 事件计数（演示事件推送，不写入日志防刷屏） */
+  let statsTickCount = 0
   /** 对照统计轮询句柄 */
   let statsTimer = 0
 
@@ -147,6 +149,7 @@ declare global {
     if (options.uploadEnabled === false) parts.push('uploadEnabled:false')
     if (options.stats === false) parts.push('stats:false')
     if (options.badge) parts.push('badge:true')
+    if (options.fatalNotice) parts.push('fatalNotice:true')
     if (options.ui === false) {
       parts.push('ui:false')
     } else if (options.ui && typeof options.ui === 'object' && options.ui.setting !== undefined) {
@@ -186,6 +189,9 @@ declare global {
 
     // 右上角数据徽章（ui / stats 总闸关闭时不生效）
     if ($<HTMLInputElement>('opt-badge').checked) options.badge = true
+
+    // fatal 恢复耗尽时经 notice 提示（默认关闭）
+    if ($<HTMLInputElement>('opt-fatal-notice').checked) options.fatalNotice = true
 
     // 设置开关组按项显示（ui 总闸关闭时不生效，跳过收集）
     if (options.ui === undefined) {
@@ -242,6 +248,8 @@ declare global {
     handle = null
     $('player').innerHTML = ''
     stopStatsPolling()
+    statsTickCount = 0
+    setChip($('handle-tick'), '—', 'neutral')
     setPlayerState('未创建', 'danger')
   }
 
@@ -268,6 +276,12 @@ declare global {
     })
     art.on('p2p:fatalError', function (...args: unknown[]) {
       appendLog('p2p:fatalError', stringifyArgs(args), 'error')
+    })
+
+    // p2p:statsTick 演示：1Hz 心跳推送统计快照，以计数 + peers 摘要更新 chip（不写入日志防刷屏）
+    art.on('p2p:statsTick', (snapshot: P2PStats) => {
+      statsTickCount += 1
+      setChip($('handle-tick'), '#' + statsTickCount + ' · peers ' + snapshot.peers, 'info')
     })
 
     art.on('ready', () => {
@@ -301,11 +315,16 @@ declare global {
 
     const url = currentSource === 'A' ? $<HTMLInputElement>('stream-a').value.trim() : $<HTMLInputElement>('stream-b').value.trim()
     const pluginOptions = buildOptions()
+    const lang = $<HTMLSelectElement>('opt-lang').value
     const art = new Artplayer({
       container: '#player',
       url,
       // 与插件 customType 注册名保持一致：urlMix 按 option.type 查回调，名字脱节则 P2P 不接管
       type: resolveTypeName(),
+
+      // 界面语言（i18n 演示）：仅显式选择时传入——宿主以展开合并选项，
+      // 显式传 undefined 同样会覆盖内置默认 lang 并使 i18n 初始化失败
+      ...(lang ? { lang } : {}),
 
       // 播放行为：自动播放需静音（浏览器自动播放策略），内联播放利于移动端
       autoplay: true,
@@ -344,7 +363,7 @@ declare global {
     updateSwitchButton()
     bindEvents(art)
     startStatsPolling()
-    appendLog('player:create', '源 ' + currentSource + ' · ' + describeOptions(pluginOptions), 'info')
+    appendLog('player:create', '源 ' + currentSource + (lang ? ' · lang=' + lang : '') + ' · ' + describeOptions(pluginOptions), 'info')
   }
 
   /** 换源：art.url 赋值走 customType 回调（验证重入安全与模式保持） */
@@ -376,6 +395,7 @@ declare global {
       setChip($('handle-p2p'), '—', 'neutral')
       setChip($('handle-upload'), '—', 'neutral')
       setChip($('handle-badge'), '—', 'neutral')
+      setChip($('handle-tick'), '—', 'neutral')
       return
     }
 

@@ -9,7 +9,7 @@
  * 结果输出到 output/test-docs-<时间戳>.json，进程自动退出
  */
 
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 
@@ -93,6 +93,22 @@ if (handleDts === null) {
   record('句柄表: d.ts 中存在 P2PPluginHandle 声明', false, 'P2PPluginHandle not found')
 } else {
   recordSetEqual('句柄表 ↔ P2PPluginHandle 双向一致', handleDoc, handleDts)
+}
+
+// --- 示例 handle 成员引用 ↔ P2PPluginHandle ---
+// 示例代码中 handle.method 调用必须是 d.ts 已声明成员；
+// 选项名不纳入此断言（示例非类型消费面，选项一致性由选项表断言保障）
+if (handleDts !== null && existsSync('examples')) {
+  const referenced = []
+  for (const file of readdirSync('examples').filter(item => item.endsWith('.html'))) {
+    const html = readFileSync(join('examples', file), 'utf8')
+    for (const match of html.matchAll(/handle\.(\w+)/g)) {
+      referenced.push(match[1])
+    }
+  }
+  const unique = [...new Set(referenced)]
+  const unknown = unique.filter(name => !handleDts.includes(name))
+  record('示例 handle 成员引用 ↔ P2PPluginHandle 一致', unknown.length === 0, { referenced: unique, unknown })
 }
 
 // --- 工厂静态成员 ↔ P2PPluginFactory ---

@@ -21,6 +21,7 @@ import type Artplayer from 'artplayer'
 import type { HlsWithP2PInstance } from 'p2p-media-loader-hlsjs'
 import { attachEventBridge } from './bridge'
 import { createHlsWithP2P, type EngineHooks } from './engine'
+import { I18N_KEY_FATAL_NOTICE } from './constants'
 import type { P2PStatsEngine } from './stats'
 import type { ResolvedOptions } from './types/internal'
 import type { StateChangeDetails } from './types/events'
@@ -229,11 +230,16 @@ export class P2PController {
    * 不可恢复 fatal 的有界重建
    *
    * 重建计数超限后停止动作，发出带原因的 fatalError
-   * 事件交由宿主决策（提示用户 / 换源）
+   * 事件交由宿主决策（提示用户 / 换源）；fatalNotice 开启时
+   * 另经 notice 提示终端用户（文案经 i18n，仅此终态一次）
    */
   #handleUnrecoverable(_data: unknown, _retryCount: number): void {
     if (this.#recreateCount >= this.#options.fatalRetryMax) {
       this.#art.emit('p2p:fatalError', { reason: 'recreate-limit-exceeded', recreateCount: this.#recreateCount }, this.#recreateCount)
+      // opt-in 的终端提示：软恢复期不输出；事件照发，编程消费不受影响
+      if (this.#options.fatalNotice) {
+        this.#art.notice.show = this.#art.i18n.get(I18N_KEY_FATAL_NOTICE)
+      }
       return
     }
     this.#recreateCount += 1

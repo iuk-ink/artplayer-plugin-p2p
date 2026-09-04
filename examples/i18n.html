@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>界面文案（i18n） · artplayer-plugin-p2p</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; background: #101014; color: #E8EAF0; }
+    #player { width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; }
+    .row { display: flex; gap: 12px; margin: 16px 0; align-items: center; }
+    select, button { padding: 8px 12px; border-radius: 6px; border: 1px solid #3A3F4B; background: #1A1D24; color: #E8EAF0; }
+  </style>
+</head>
+<body>
+  <h1>界面文案（i18n）</h1>
+  <p>
+    插件文案键为中文原文，未命中语言自动回退中文（零配置）；插件自带英文语言包。
+    切换 <code>lang</code> 后重建播放器，设置面板、右键菜单与统计面板即显示对应语言；
+    其他语言可在创建后经 <code>art.i18n.update</code> 覆写（后注册覆盖插件注册）。
+  </p>
+  <div class="row">
+    <label for="lang">语言：</label>
+    <select id="lang">
+      <option value="zh-cn">中文（zh-cn）</option>
+      <option value="en">English（en）</option>
+    </select>
+    <button id="btn-apply">应用（重建播放器）</button>
+  </div>
+  <div id="player"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/artplayer@5.4.0/dist/artplayer.js"></script>
+  <script src="vendor/artplayer-plugin-p2p.iife.js"></script>
+  <script>
+    function createPlayer(lang) {
+      if (window.art) window.art.destroy()
+      const art = new Artplayer({
+        container: '#player',
+        url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+        type: 'm3u8',
+        autoplay: true,
+        muted: true,
+        playsInline: true,
+        setting: true,
+        // 仅显式选择时传入：宿主以展开合并选项，显式传 undefined 同样会覆盖内置默认 lang
+        ...(lang ? { lang } : {}),
+        plugins: [artplayerPluginP2P()],
+      })
+      window.art = art
+
+      // 覆写示例：繁体中文（键为中文原文，可只覆写需要的键）
+      art.i18n.update({
+        'zh-tw': {
+          'P2P 加速': 'P2P 加速',
+          '仅上传模式': '僅上傳模式',
+          'P2P 统计': 'P2P 統計',
+        },
+      })
+    }
+
+    document.getElementById('btn-apply').addEventListener('click', () => {
+      createPlayer(document.getElementById('lang').value || undefined)
+    })
+    createPlayer(undefined)
+  </script>
+</body>
+</html>

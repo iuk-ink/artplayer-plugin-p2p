@@ -22,6 +22,8 @@ export interface ResolvedOptions {
   typeName: string
   /** fatal 销毁重建的最大次数（已含默认值） */
   fatalRetryMax: number
+  /** fatal 恢复耗尽的 notice 提示开关（仅显式传 true 时开启） */
+  fatalNotice: boolean
   /** 初始 P2P 开关（已含默认值） */
   p2pEnabled: boolean
   /** 初始上传开关（已含默认值） */

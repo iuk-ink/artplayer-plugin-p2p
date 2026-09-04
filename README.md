@@ -73,6 +73,12 @@ artplayerPluginP2P({
 })
 ```
 
+## 示例
+
+[examples](./examples) 目录提供单一主题、零构建、双击即开的场景化示例：
+IIFE 与 ESM（importmap）两种接入形态、无损动态开关、界面文案多语言、
+数据徽章（点击展开详情）与 p2p:* 事件消费。
+
 ## 配置项
 
 ### 插件选项 `P2POptions`
@@ -85,6 +91,7 @@ artplayerPluginP2P({
 | `stats` | `boolean` | `true` | 统计展示总开关：右键「P2P 统计」入口 + 面板 + 右上角徽章；false 时仅可编程读取 |
 | `badge` | `boolean` | `false` | 右上角 P2P 数据徽章初始显示状态（受 ui / stats 总闸约束） |
 | `fatalRetryMax` | `number` | `2` | fatal 错误销毁重建的最大次数 |
+| `fatalNotice` | `boolean` | `false` | fatal 恢复耗尽时经播放器 notice 提示用户（仅提示一次；编程消费以 `p2p:fatalError` 事件为准） |
 | `core` | `Partial<CoreConfig>` | — | p2p-media-loader core 配置，原样透传；`isP2PDisabled` / `isP2PUploadDisabled` 由插件开关状态接管 |
 | `tracker` | `P2PTrackerOptions` | — | 信令服务器快捷配置组（字段与 core 同名），与 `core` 浅合并且优先 |
 | `hls` | `Partial<HlsConfig>` | — | hls.js 配置，原样透传 |
@@ -130,6 +137,27 @@ artplayerPluginP2P({
 门控优先级：`ui: false` > `stats: false` > `ui.setting` >
 宿主 `option.setting`（宿主未开启设置面板时插件自动跳过挂载）。
 
+### 界面文案（i18n）
+
+设置开关、右键菜单项、统计面板行标题与状态行、数据徽章单位等
+全部插件文案基于 ArtPlayer 的 i18n 机制：键为中文原文，
+未注册语言自动回退显示中文（中文站点零配置）；插件注册了英文语言包，
+宿主 `option.lang: 'en'` 时自动显示英文。
+
+需要其他语言或覆写插件文案时，在播放器创建后调用（后注册覆盖插件注册）：
+
+```js
+art.i18n.update({
+  'zh-tw': {
+    'P2P 加速': 'P2P 加速',
+    '仅上传模式': '僅上傳模式',
+    'P2P 统计': 'P2P 統計',
+    '运行中': '運行中',
+    '节点': '節點',
+  },
+})
+```
+
 ## 插件句柄
 
 ```js
@@ -170,7 +198,7 @@ art.on('p2p:stateChange', ({ p2pEnabled, uploadEnabled }) => { /* ... */ })
 | 下载计数 | `p2p:chunkDownloaded` `p2p:chunkUploaded` |
 | 对等网络 | `p2p:peerConnect` `p2p:peerConnectError` `p2p:peerClose` `p2p:peerError` `p2p:peerWarning` |
 | 信令 | `p2p:trackerError` `p2p:trackerWarning` |
-| 插件自身 | `p2p:stateChange`（开关切换）`p2p:fatalError`（fatal 通知与重建耗尽） |
+| 插件自身 | `p2p:stateChange`（开关切换）`p2p:fatalError`（fatal 通知与重建耗尽）`p2p:statsTick`（统计心跳快照 1Hz 推送） |
 
 ## 纯逻辑入口
 

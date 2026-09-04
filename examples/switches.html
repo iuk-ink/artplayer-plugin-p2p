@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>无损动态开关 · artplayer-plugin-p2p</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; background: #101014; color: #E8EAF0; }
+    #player { width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; }
+    .row { display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+    button { padding: 8px 16px; border-radius: 6px; border: 1px solid #3A3F4B; background: #1A1D24; color: #E8EAF0; cursor: pointer; }
+    button:hover { background: #232733; }
+    #state { font-family: ui-monospace, monospace; color: #8AB4FF; }
+  </style>
+</head>
+<body>
+  <h1>无损动态开关</h1>
+  <p>
+    经句柄 <code>setP2PEnabled / setUploadEnabled</code> 切换运行时行为：
+    不销毁实例、不中断播放，动态配置实时下发到引擎。开关状态变化经
+    <code>p2p:stateChange</code> 事件广播。
+  </p>
+  <div id="player"></div>
+  <div class="row">
+    <button id="btn-p2p">toggle P2P 加速</button>
+    <button id="btn-upload">toggle 上传</button>
+    <span id="state">—</span>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/artplayer@5.4.0/dist/artplayer.js"></script>
+  <script src="vendor/artplayer-plugin-p2p.iife.js"></script>
+  <script>
+    const art = new Artplayer({
+      container: '#player',
+      url: 'https://fcc3ddae59ed.us-west-2.playback.live-video.net/api/video/v1/us-west-2.893648527354.channel.DmumNckWFTqz.m3u8',
+      type: 'm3u8',
+      autoplay: true,
+      muted: true,
+      playsInline: true,
+      plugins: [artplayerPluginP2P()],
+    })
+    const handle = art.plugins.artplayerPluginP2P
+
+    function render(details) {
+      document.getElementById('state').textContent
+        = 'P2P ' + (details.p2pEnabled ? '开' : '关') + ' / 上传 ' + (details.uploadEnabled ? '开' : '关')
+    }
+
+    art.on('p2p:stateChange', render)
+    document.getElementById('btn-p2p').addEventListener('click', () => {
+      handle.setP2PEnabled(!handle.isP2PEnabled())
+    })
+    document.getElementById('btn-upload').addEventListener('click', () => {
+      handle.setUploadEnabled(!handle.isUploadEnabled())
+    })
+  </script>
+</body>
+</html>

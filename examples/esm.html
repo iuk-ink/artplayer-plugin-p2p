@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESM 接入（importmap） · artplayer-plugin-p2p</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; background: #101014; color: #E8EAF0; }
+    #player { width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; }
+    code { color: #8AB4FF; }
+  </style>
+  <!--
+    ESM 产物的三个 bare import（artplayer / hls.js / p2p-media-loader-hlsjs）
+    经 importmap 解析到 CDN。版本须对齐插件的 peerDependencies 范围
+    （artplayer >= 5、hls.js ^1.7）。hlsjs 引擎包必须以「顶层包地址 +
+    ?bundle」调用：esm.sh 会把其依赖树（p2p-media-loader-core / debug /
+    ms）整体内联，规避转换服务对 CJS 包 debug 的命名导出互操作缺陷
+    （bundle 参数仅顶层地址生效，产物路径上无效）。
+    排障提示：CDN 模块为强缓存，首次加载失败后修复了 importmap 仍复现
+    旧错误时，请 Ctrl+F5 强制刷新。
+    上线时可把 vendor/index.mjs 替换为
+    https://cdn.jsdelivr.net/npm/artplayer-plugin-p2p@latest/dist/index.mjs
+  -->
+  <script type="importmap">
+    {
+      "imports": {
+        "artplayer": "https://esm.sh/artplayer@5.4.0",
+        "hls.js": "https://esm.sh/hls.js@1.7.2",
+        "p2p-media-loader-hlsjs": "https://esm.sh/p2p-media-loader-hlsjs@4.0.0?bundle"
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>ESM 接入（importmap）</h1>
+  <p>
+    零构建的 ESM 接入：插件以 ES 模块引入，与宿主共享同一份 ArtPlayer 与 hls.js 实例
+    （external 不打包，实例一致性由 importmap 保证）。
+  </p>
+  <div id="player"></div>
+
+  <script type="module">
+    import Artplayer from 'artplayer'
+    import artplayerPluginP2P from './vendor/index.mjs'
+
+    const art = new Artplayer({
+      container: '#player',
+      url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+      type: 'm3u8',
+      autoplay: true,
+      muted: true,
+      playsInline: true,
+      setting: true,
+      fullscreen: true,
+      plugins: [
+        artplayerPluginP2P({
+          badge: true,
+        }),
+      ],
+    })
+    window.art = art
+  </script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>事件消费 · artplayer-plugin-p2p</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; background: #101014; color: #E8EAF0; }
+    #player { width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; }
+    #log { margin-top: 16px; padding: 12px; border-radius: 8px; background: #16181F; font-family: ui-monospace, monospace; font-size: 12px; height: 220px; overflow-y: auto; }
+    #log div { padding: 2px 0; border-bottom: 1px solid #1E212B; }
+    #log .name { color: #8AB4FF; margin: 0 8px; }
+    #log .time { color: #6B7280; }
+  </style>
+</head>
+<body>
+  <h1>事件消费</h1>
+  <p>
+    全部引擎事件以 <code>p2p:</code> 前缀经 <code>art.on</code> 透传（15 个），
+    外加 <code>p2p:stateChange</code>（开关状态广播）、<code>p2p:fatalError</code>（自愈耗尽）
+    与 <code>p2p:statsTick</code>（1Hz 统计心跳）。高频分片事件建议聚合展示，避免日志刷屏。
+  </p>
+  <div id="player"></div>
+  <div id="log"><div class="time">等待事件…</div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/artplayer@5.4.0/dist/artplayer.js"></script>
+  <script src="vendor/artplayer-plugin-p2p.iife.js"></script>
+  <script>
+    const art = new Artplayer({
+      container: '#player',
+      url: 'https://fcc3ddae59ed.us-west-2.playback.live-video.net/api/video/v1/us-west-2.893648527354.channel.DmumNckWFTqz.m3u8',
+      type: 'm3u8',
+      autoplay: true,
+      muted: true,
+      playsInline: true,
+      plugins: [artplayerPluginP2P()],
+    })
+    const logEl = document.getElementById('log')
+    let count = 0
+
+    function log(name, payload) {
+      if (logEl.firstElementChild?.textContent === '等待事件…') logEl.textContent = ''
+      const line = document.createElement('div')
+      const time = document.createElement('span')
+      time.className = 'time'
+      time.textContent = new Date().toLocaleTimeString()
+      const nameEl = document.createElement('span')
+      nameEl.className = 'name'
+      nameEl.textContent = name
+      const payloadEl = document.createElement('span')
+      payloadEl.textContent = payload
+      line.append(time, nameEl, payloadEl)
+      logEl.appendChild(line)
+      if (++count > 100) logEl.removeChild(logEl.firstChild)
+      logEl.scrollTop = logEl.scrollHeight
+    }
+
+    // 代表性事件：状态广播 / 心跳 / 节点生命周期 / 分片传输
+    // 引擎事件为参数透传：chunk 事件是位置参数 (bytes, source, peerId, ...)
+    art.on('p2p:stateChange', details => log('p2p:stateChange', JSON.stringify(details)))
+    art.on('p2p:statsTick', snapshot => log('p2p:statsTick', 'peers ' + snapshot.peers + ' · ' + Math.round(snapshot.p2pDownloadRatio * 100) + '%'))
+    art.on('p2p:peerConnect', details => log('p2p:peerConnect', details.peerId))
+    art.on('p2p:peerClose', details => log('p2p:peerClose', details.peerId))
+    art.on('p2p:chunkDownloaded', (bytes, source) => log('p2p:chunkDownloaded', source + ' ' + bytes + 'B'))
+    art.on('p2p:chunkUploaded', bytes => log('p2p:chunkUploaded', bytes + 'B'))
+    art.on('p2p:fatalError', error => log('p2p:fatalError', String(error)))
+  </script>
+</body>
+</html>

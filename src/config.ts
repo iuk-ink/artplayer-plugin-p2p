@@ -77,6 +77,7 @@ export function resolveOptions(options: P2POptions): ResolvedOptions {
   return {
     typeName: options.type ?? DEFAULT_TYPE,
     fatalRetryMax: options.fatalRetryMax ?? DEFAULT_FATAL_RETRY_MAX,
+    fatalNotice: options.fatalNotice === true,
     p2pEnabled: options.enabled ?? true,
     uploadEnabled: options.uploadEnabled ?? true,
     uiEnabled,

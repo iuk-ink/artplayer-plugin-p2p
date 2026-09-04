@@ -15,7 +15,7 @@
  * 运行完毕自动退出；失败以非零码结束
  */
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { createRequire } from 'node:module'
@@ -30,6 +30,7 @@ const pkg = require('../package.json')
 const STAGING = path.join(root, 'dist.staging')
 const DIST = path.join(root, 'dist')
 const VENDOR = path.join(root, 'demo', 'vendor')
+const EXAMPLES_VENDOR = path.join(root, 'examples', 'vendor')
 
 /** npm 包构建的四个运行时外部依赖（与宿主共享实例） */
 const EXTERNAL = [
@@ -175,6 +176,24 @@ async function main() {
         path.join(VENDOR, 'artplayer-plugin-p2p.iife.js'),
       )
       console.log('demo compiled, vendor synced')
+    }
+
+    // 示例产物同步：examples 目录存在时清空后成套复制——ESM 产物为
+    // 「入口 + 共享 chunk」多文件结构（rolldown 双入口构建会提取共享
+    // 模块为独立 chunk），且 chunk 文件名含内容 hash、随构建变化，
+    // 白名单单文件复制会让页面因 chunk 缺失 404，增量复制会残留旧
+    // hash 文件，必须整体替换
+    if (existsSync(path.join(root, 'examples'))) {
+      rmSync(EXAMPLES_VENDOR, { recursive: true, force: true })
+      mkdirSync(EXAMPLES_VENDOR, { recursive: true })
+      copyFileSync(
+        path.join(DIST, 'artplayer-plugin-p2p.iife.js'),
+        path.join(EXAMPLES_VENDOR, 'artplayer-plugin-p2p.iife.js'),
+      )
+      for (const file of readdirSync(DIST).filter(item => item.endsWith('.mjs'))) {
+        copyFileSync(path.join(DIST, file), path.join(EXAMPLES_VENDOR, file))
+      }
+      console.log('examples vendor synced')
     }
   } catch (error) {
     rmSync(STAGING, { recursive: true, force: true })

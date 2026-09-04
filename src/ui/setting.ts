@@ -13,6 +13,7 @@
 import type Artplayer from 'artplayer'
 import type { P2PController } from '../controller'
 import type { P2PSettingItemsOptions } from '../types/options'
+import { I18N_KEY_P2P_ENABLED, I18N_KEY_STATS, I18N_KEY_UPLOAD_ONLY } from '../constants'
 import { log } from '../debug'
 import type { StatsBadgeHandle } from './stats-badge'
 
@@ -61,8 +62,7 @@ export function mountP2PSettings(
   if (items.p2pEnabled) {
     art.setting.add({
       name: 'artp2pSetting',
-      html: 'P2P 加速',
-      tooltip: 'P2P 加速',
+      html: art.i18n.get(I18N_KEY_P2P_ENABLED),
       icon: ICON_P2P_ENABLED,
       switch: controller.p2pEnabled,
       onSwitch(item) {
@@ -77,8 +77,7 @@ export function mountP2PSettings(
   if (items.uploadOnly) {
     art.setting.add({
       name: 'artp2pUploadSetting',
-      html: '仅上传模式',
-      tooltip: '仅上传模式',
+      html: art.i18n.get(I18N_KEY_UPLOAD_ONLY),
       icon: ICON_UPLOAD_ONLY,
       switch: !controller.uploadEnabled,
       onSwitch(item) {
@@ -93,8 +92,7 @@ export function mountP2PSettings(
   if (badge && items.stats) {
     const badgeItem = {
       name: 'artp2pStatsSetting',
-      html: 'P2P 统计',
-      tooltip: 'P2P 统计',
+      html: art.i18n.get(I18N_KEY_STATS),
       icon: ICON_STATS,
       switch: badge.isVisible(),
       onSwitch(item: { switch?: boolean }) {
