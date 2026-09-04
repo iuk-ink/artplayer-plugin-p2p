@@ -23,13 +23,19 @@
 
 import Hls from 'hls.js'
 import type Artplayer from 'artplayer'
-import type { P2PPluginHandle, P2POptions } from './types'
+import type { P2PPluginFactory, P2PPluginHandle } from './types/handle'
+import type { P2POptions } from './types/options'
+import type { P2PStats } from './types/stats'
 import { P2PStatsEngine } from './stats'
+import { StatsTicker } from './stats-tick'
 import { P2PController } from './controller'
 import { resolveOptions } from './config'
+import { isDebugEnabled, log, setDebugEnabled } from './debug'
 import { mountUI } from './ui'
+import { STATS_POLLING_MS } from './constants'
 
 export type {
+  P2PPluginFactory,
   P2POptions,
   P2PTrackerOptions,
   P2PUIOptions,
@@ -40,7 +46,7 @@ export type {
   StateChangeDetails,
   CoreConfig,
   DynamicCoreConfig,
-} from './types'
+} from './types/index'
 export {
   P2P_EVENT_BRIDGE_MAP,
   DEFAULT_TYPE,
@@ -55,6 +61,7 @@ export type { EngineHooks, EngineOptions } from './engine'
 export { P2PController } from './controller'
 export type { ControllerState } from './controller'
 export { P2PStatsEngine } from './stats'
+export { StatsTicker, type StatsTickCallback } from './stats-tick'
 
 /**
  * 从 URL 提取小写扩展名（不含点）
@@ -76,21 +83,29 @@ function getUrlExtension(url: string): string {
 }
 
 /**
- * ArtPlayer P2P 插件工厂
- *
- * 自动注册 customType 并对首次加载做时序接管（用户零感知）；
- * 返回的句柄挂载在 art.plugins.artplayerPluginP2P
+ * 插件工厂实现：组装 customType 注册、首载时序补救与句柄
+ * （DEBUG / version 静态成员经 P2PPluginFactory 类型断言挂载，
+ * 见模块尾部的赋值与代理逻辑）
  *
  * @param options - 插件选项
  * @returns ArtPlayer 插件函数
  */
-export default function artplayerPluginP2P(options: P2POptions = {}) {
+function artplayerPluginP2PImpl(options: P2POptions = {}): (art: Artplayer) => P2PPluginHandle {
   return (art: Artplayer): P2PPluginHandle => {
     const resolved = resolveOptions(options)
     const stats = new P2PStatsEngine()
     const controller = new P2PController(art, resolved, stats)
 
-    mountUI(art, controller, stats, resolved)
+    // 统计心跳：单一 1Hz 定时器，装配层（面板 / 徽章）与句柄
+    // onStatsTick 共享同一数据源与启停状态
+    const ticker = new StatsTicker(stats, STATS_POLLING_MS)
+
+    const badge = mountUI(art, controller, ticker, resolved)
+
+    // 播放器销毁时终止心跳（组件订阅已随各自 destroy 退订，此处兜底清空）
+    art.on('destroy', () => {
+      ticker.destroy()
+    })
 
     /**
      * customType 回调：URL 设置时由 ArtPlayer 调用
@@ -111,14 +126,18 @@ export default function artplayerPluginP2P(options: P2POptions = {}) {
       controller.activate(url, video)
     }
 
-    // customType 注册：已占用的格式名不覆盖，仅警告（避免破坏宿主既有集成）
+    // customType 注册：已占用的格式名不覆盖，仅警告（避免破坏宿主既有集成）。
+    // 冲突意味着该类型不会被 P2P 接管，属错误级诊断，无条件输出并附行动指引
     let registered = false
     const customTypeMap = art.option.customType ?? (art.option.customType = {})
     if (customTypeMap[resolved.typeName]) {
-      console.warn(`[artplayer-plugin-p2p] customType "${resolved.typeName}" already exists, skip registering`)
+      console.warn(
+        `[artplayer-plugin-p2p] customType "${resolved.typeName}" already exists, P2P takeover skipped; pass a different "type" or remove the existing registration`,
+      )
     } else {
       customTypeMap[resolved.typeName] = typeCallback
       registered = true
+      log(`customType "${resolved.typeName}" registered`)
     }
 
     // 首载时序补救：插件工厂晚于首次 URL 加载执行，首次加载已走原生分支
@@ -137,6 +156,7 @@ export default function artplayerPluginP2P(options: P2POptions = {}) {
             $video.load()
           }
           art.url = optionUrl
+          log('first-load remedy applied: reassigned art.url to trigger P2P takeover')
         }
       }
     }
@@ -170,6 +190,19 @@ export default function artplayerPluginP2P(options: P2POptions = {}) {
       isUploadEnabled() {
         return controller.uploadEnabled
       },
+      setBadgeVisible(visible) {
+        if (visible) {
+          badge?.show()
+        } else {
+          badge?.hide()
+        }
+      },
+      isBadgeVisible() {
+        return badge?.isVisible() ?? false
+      },
+      onStatsTick(callback: (snapshot: P2PStats) => void): () => void {
+        return ticker.subscribe(callback)
+      },
       /**
        * 运行时动态配置透传：转发到当前引擎的 Core.applyDynamicConfig；
        * 无活跃实例时不生效（即时调参语义，不做延迟补发）
@@ -180,3 +213,20 @@ export default function artplayerPluginP2P(options: P2POptions = {}) {
     }
   }
 }
+
+/**
+ * 插件工厂（default 导出）：携带 DEBUG / version 静态成员
+ */
+const artplayerPluginP2P = artplayerPluginP2PImpl as P2PPluginFactory
+
+export default artplayerPluginP2P
+
+// version 为构建期 define 注入的字面量（单一来源 package.json，只读语义）；
+// DEBUG 经 getter/setter 代理至调试日志模块：宿主运行时读写立即生效，
+// 且入口与 UI 层共享同一状态（独立 debug 模块避免循环依赖）
+artplayerPluginP2P.version = __ARTP2P_VERSION__
+Object.defineProperty(artplayerPluginP2P, 'DEBUG', {
+  enumerable: true,
+  get: () => isDebugEnabled(),
+  set: (value: boolean) => setDebugEnabled(Boolean(value)),
+})

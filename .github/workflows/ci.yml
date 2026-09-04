@@ -1,0 +1,45 @@
+# PR / 主干推送门禁：类型检查 + 构建 + 全量测试（发布仍走 tag 触发的 publish.yml）
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 安装 Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: 安装依赖
+        run: npm ci
+
+      # 原则 1 兼容性防火墙：编译器版本与仓库承诺（package.json devDependencies）一致
+      - name: 校验 TypeScript 版本
+        run: |
+          TS_VERSION=$(node -p "require('./package.json').devDependencies.typescript")
+          echo "declared typescript: $TS_VERSION"
+          npx tsc --version
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 构建（原子落盘 + 冒烟前置）
+        run: npm run build
+
+      - name: 全量测试
+        run: npm test

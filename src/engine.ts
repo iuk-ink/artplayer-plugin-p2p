@@ -7,8 +7,7 @@
  * - 创建携带 P2P 能力的 hls.js 实例，并挂载 fatal 分级恢复策略
  *
  * P2P / 上传开关统一经运行时动态配置实现（见 controller），
- * 实例创建时的初始注入保证重建后模式不丢失，
- * 因此本模块不再提供"裸 hls.js 实例"工厂
+ * 实例创建时的初始注入保证重建后模式不丢失
  *
  * @module engine
  */
@@ -20,15 +19,10 @@ import type { HlsWithP2PConfig, HlsWithP2PInstance } from 'p2p-media-loader-hlsj
 import { applyRuntimeToggle, mergeCoreConfig } from './config'
 import { FatalRecoveryPolicy } from './recovery'
 import { DEFAULT_FATAL_RETRY_MAX } from './constants'
-import type { P2POptions } from './types'
+import type { EngineOptions } from './types/internal'
 
-/** 引擎消费的选项结构化子集（ResolvedOptions 结构化兼容） */
-export interface EngineOptions extends Pick<P2POptions, 'core' | 'tracker' | 'hls' | 'fatalRetryMax'> {
-  /** 当前 P2P 开关状态（注入 isP2PDisabled） */
-  p2pEnabled: boolean
-  /** 当前上传开关状态（注入 isP2PUploadDisabled） */
-  uploadEnabled: boolean
-}
+// EngineOptions 随引擎钩子一并对外导出（契约定义在 types/internal）
+export type { EngineOptions }
 
 /** hls.js 构造器类型 */
 type HlsConstructor = typeof Hls

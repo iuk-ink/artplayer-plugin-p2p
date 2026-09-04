@@ -140,3 +140,4 @@ dist
 other/
 output/
 plan/
+.staging/

@@ -5,8 +5,9 @@
  * 使传统 <script> 加载后 window.artplayerPluginP2P 即为可调用函数
  * （对齐 ArtPlayer 官方插件的 IIFE 形态）
  *
- * 注意：本入口不使用任何 export——esbuild 的 IIFE globalName
- * 挂载的是模块命名空间对象而非 default 导出，故改为自挂载
+ * 注意：本入口不使用任何 export——打包器的 IIFE globalName
+ * 挂载的是模块命名空间对象而非 default 导出，
+ * 因此采用模块执行时直接挂载全局的形式
  *
  * @module iife
  */

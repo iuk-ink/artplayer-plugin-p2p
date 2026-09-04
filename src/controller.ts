@@ -20,9 +20,10 @@ import Hls from 'hls.js'
 import type Artplayer from 'artplayer'
 import type { HlsWithP2PInstance } from 'p2p-media-loader-hlsjs'
 import { attachEventBridge } from './bridge'
-import { createHlsWithP2P, type EngineHooks, type EngineOptions } from './engine'
+import { createHlsWithP2P, type EngineHooks } from './engine'
 import type { P2PStatsEngine } from './stats'
-import type { ResolvedOptions, StateChangeDetails } from './types'
+import type { ResolvedOptions } from './types/internal'
+import type { StateChangeDetails } from './types/events'
 
 /** 控制器状态：idle 未创建 / active 播放中 / destroyed 播放器已销毁 */
 export type ControllerState = 'idle' | 'active' | 'destroyed'
@@ -158,7 +159,7 @@ export class P2PController {
    * @param video - 视频元素
    */
   #start(url: string, video: HTMLVideoElement): void {
-    const engineOptions: EngineOptions = {
+    const engineOptions = {
       core: this.#options.core,
       tracker: this.#options.tracker,
       hls: this.#options.hls,

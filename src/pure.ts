@@ -1,8 +1,8 @@
 /**
  * 纯逻辑聚合入口
  *
- * 聚合无浏览器依赖的模块（常量 / 配置合并 / 带宽 / 统计），
- * 供 Node 环境直接加载与测试；浏览器集成请使用主入口
+ * 聚合无浏览器 DOM 依赖的模块（常量 / 配置合并 / 带宽 / 统计 /
+ * 统计心跳），供 Node 环境直接加载与测试；浏览器集成请使用主入口
  *
  * @module pure
  */
@@ -17,15 +17,18 @@ export {
 export { resolveOptions, mergeCoreConfig, applyRuntimeToggle } from './config'
 export { BandwidthCalculator } from './bandwidth'
 export { P2PStatsEngine } from './stats'
+export { StatsTicker } from './stats-tick'
+export type { StatsTickCallback } from './stats-tick'
 export type {
   P2POptions,
   P2PTrackerOptions,
   P2PUIOptions,
   P2PSettingItemsOptions,
   P2PPluginHandle,
+  P2PPluginFactory,
   P2PStats,
   DownloadChannel,
   StateChangeDetails,
-  CoreConfig,
   DynamicCoreConfig,
-} from './types'
+  CoreConfig,
+} from './types/index'

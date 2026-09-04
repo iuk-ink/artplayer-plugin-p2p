@@ -2,7 +2,7 @@
  * 插件配置解析与合并逻辑
  *
  * 独立于引擎模块的纯函数集合，可在 Node 环境直接测试：
- * - resolveOptions：归一化插件选项（默认值合并、stats/ui 降级兼容）
+ * - resolveOptions：归一化插件选项（默认值合并、stats / ui / badge 降级兼容）
  * - mergeCoreConfig：合并 core 配置与 tracker 快捷配置组
  * - applyRuntimeToggle：将插件运行时开关状态注入 core 配置
  *
@@ -11,7 +11,8 @@
 
 import type { CoreConfig } from 'p2p-media-loader-core'
 import { DEFAULT_FATAL_RETRY_MAX, DEFAULT_TYPE } from './constants'
-import type { P2POptions, P2PSettingItemsOptions, P2PUIOptions, ResolvedOptions } from './types'
+import type { P2POptions, P2PSettingItemsOptions, P2PUIOptions } from './types/options'
+import type { ResolvedOptions } from './types/internal'
 
 /**
  * 解析对象形式的 ui 配置
@@ -52,7 +53,7 @@ function resolveSettingItems(
 }
 
 /**
- * 解析插件选项：填充默认值并归一化 stats / ui 开关
+ * 解析插件选项：填充默认值并归一化 stats / ui / badge 开关
  *
  * 仅做归一化，不修改任何透传配置的内容；
  * core / tracker / hls 原样保留给引擎层合并
@@ -80,6 +81,7 @@ export function resolveOptions(options: P2POptions): ResolvedOptions {
     uploadEnabled: options.uploadEnabled ?? true,
     uiEnabled,
     statsEnabled: uiEnabled && options.stats !== false,
+    badgeEnabled: uiEnabled && options.stats !== false && options.badge === true,
     settingEnabled,
     settingItems,
     core: options.core,

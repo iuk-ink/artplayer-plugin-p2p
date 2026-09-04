@@ -113,7 +113,7 @@
           <span class="eyebrow">Monitor</span>
           <h2>对照统计与句柄直控</h2>
           <p>
-            外部每秒轮询 getStats()，与播放器内「P2P 统计」面板数值逐项对照（验收⑩）；
+            外部每秒轮询 getStats()，与播放器内「P2P 统计」面板数值逐项对照；
             直控按钮经 handle.setP2PEnabled / setUploadEnabled 走无损动态切换，与设置面板开关等价。
           </p>
         </header>
@@ -193,6 +193,10 @@
                 <span class="chip" data-tone="success" id="handle-upload">—</span>
               </div>
               <div class="state-item">
+                <span class="state-name">右上角徽章</span>
+                <span class="chip" data-tone="neutral" id="handle-badge">—</span>
+              </div>
+              <div class="state-item">
                 <span class="state-name">累计总下行</span>
                 <span class="state-mono" id="stat-total">—</span>
               </div>
@@ -203,6 +207,9 @@
               </button>
               <button class="btn btn-secondary btn-sm" type="button" id="btn-toggle-upload">
                 <i data-lucide="toggle-left"></i>toggle 上传
+              </button>
+              <button class="btn btn-secondary btn-sm" type="button" id="btn-toggle-badge">
+                <i data-lucide="toggle-left"></i>toggle 徽章
               </button>
             </div>
             <span class="field-help">与播放器设置面板开关等价；切换即时生效且不断流。</span>
@@ -220,6 +227,7 @@
               <div class="cfg-fields">
                 <label class="check"><input type="checkbox" id="opt-ui" checked />ui（UI 总闸）</label>
                 <label class="check"><input type="checkbox" id="opt-stats" checked />stats（统计面板）</label>
+                <label class="check"><input type="checkbox" id="opt-badge" />badge（右上角徽章）</label>
               </div>
             </div>
 
@@ -307,7 +315,7 @@
         </span>
       </div>
       <span class="foot-copy">
-        验收⑤：fatal 重建后开关状态保持——需真实网络错误触发，可在 DevTools 断网数秒后恢复观察。
+        验证：fatal 重建后开关状态保持——需真实网络错误触发，可在 DevTools 断网数秒后恢复观察。
       </span>
     </div>
   </footer>

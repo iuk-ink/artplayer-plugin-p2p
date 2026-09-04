@@ -19,7 +19,7 @@ export const DEFAULT_FATAL_RETRY_MAX = 2
  */
 export const BANDWIDTH_WINDOW_MS = 10_000
 
-/** P2P 面板打开期间的轮询刷新周期（毫秒），与 ArtPlayer 的 INFO_LOOP_TIME 对齐 */
+/** 统计心跳周期（毫秒），与 ArtPlayer 的 INFO_LOOP_TIME 对齐 */
 export const STATS_POLLING_MS = 1000
 
 /**

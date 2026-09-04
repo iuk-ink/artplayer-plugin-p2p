@@ -1,11 +1,10 @@
 /**
- * P2P 统计面板与右键菜单入口
+ * 右键菜单「P2P 统计」项与独立 P2P 详情面板（panel 渲染器）
  *
- * 面板为 P2P 专属信息的唯一展示面：容器复用官方 art-info class
+ * 面板为 P2P 完整指标的唯一展示面：容器复用官方 art-info class
  * （art-info artp2p-info 双类）实现与「统计信息」面板的视觉同构，
  * 挂载于 art.template.$player 与原生面板同级同位。
- * 两者互斥：任一侧打开即关闭另一侧（位置重叠）。
- * 打开期间按秒轮询刷新，关闭即停（零后台开销）
+ * 数据来自统计心跳订阅（显示时订阅、隐藏即退订，零后台开销）
  *
  * @module ui/stats-menu
  */
@@ -13,7 +12,7 @@
 import type Artplayer from 'artplayer'
 import type { P2PController } from '../controller'
 import type { P2PStatsEngine } from '../stats'
-import { STATS_POLLING_MS } from '../constants'
+import type { StatsTicker } from '../stats-tick'
 import { formatBytes, formatPercent, formatSpeed } from './format'
 
 /** 右键菜单项挂载名 */
@@ -57,15 +56,15 @@ const PANEL_HTML = `
 
 /** 面板控制接口（供设置开关联动与统一卸载使用） */
 export interface StatsPanelHandle {
-  /** 打开面板并启动轮询（同时关闭原生「统计信息」面板） */
+  /** 打开面板并订阅统计心跳（同时关闭原生「统计信息」面板） */
   open(): void
-  /** 隐藏面板并停止轮询 */
+  /** 隐藏面板并退订心跳 */
   close(): void
   /** 面板当前是否显示 */
   isOpen(): boolean
   /** 订阅显隐变化（[x] 关闭与 open/close 均会触发，供设置开关同步状态） */
   onVisibilityChange(callback: (open: boolean) => void): void
-  /** 卸载面板（停止轮询并移除事件监听；DOM 随播放器销毁清除） */
+  /** 卸载面板（退订心跳并移除事件监听；DOM 随播放器销毁清除） */
   destroy(): void
 }
 
@@ -86,13 +85,13 @@ function resolveStateText(controller: P2PController): string {
  *
  * @param art - ArtPlayer 实例
  * @param controller - 生命周期控制器（读取开关状态）
- * @param stats - 统计引擎（读取快照）
+ * @param ticker - 统计心跳（面板显示期间订阅，数据由心跳推送）
  * @returns 面板控制接口
  */
 export function mountStatsMenu(
   art: Artplayer,
   controller: P2PController,
-  stats: P2PStatsEngine,
+  ticker: StatsTicker,
 ): StatsPanelHandle {
   const wrapper = document.createElement('div')
   wrapper.innerHTML = PANEL_HTML
@@ -108,13 +107,12 @@ export function mountStatsMenu(
   const $close = root.querySelector<HTMLElement>('.art-info-close')!
   art.template.$player.appendChild(root)
 
-  let timer = 0
   let opened = false
+  let unsubscribe: (() => void) | undefined
   const visibilityCallbacks: Array<(open: boolean) => void> = []
 
-  /** 刷新六行数据（面板打开期间由轮询驱动） */
-  function update(): void {
-    const snapshot = stats.snapshot()
+  /** 刷新六行数据（面板显示期间由统计心跳驱动） */
+  function update(snapshot: ReturnType<P2PStatsEngine['snapshot']>): void {
     const p2pOn = controller.p2pEnabled
     fields.state.textContent = resolveStateText(controller)
     fields.download.textContent = p2pOn
@@ -136,8 +134,7 @@ export function mountStatsMenu(
     art.template.$player.classList.add(SHOW_CLASS)
     // 与原生「统计信息」面板同位互斥：打开自身前先关闭原生面板
     art.info.show = false
-    update()
-    timer = window.setInterval(update, STATS_POLLING_MS)
+    unsubscribe = ticker.subscribe(update)
     notifyVisibility()
   }
 
@@ -145,7 +142,8 @@ export function mountStatsMenu(
     if (!opened) return
     opened = false
     art.template.$player.classList.remove(SHOW_CLASS)
-    window.clearInterval(timer)
+    unsubscribe?.()
+    unsubscribe = undefined
     notifyVisibility()
   }
 

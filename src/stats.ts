@@ -10,7 +10,7 @@
 
 import { BandwidthCalculator } from './bandwidth'
 import { BANDWIDTH_WINDOW_MS } from './constants'
-import type { DownloadChannel, P2PStats } from './types'
+import type { DownloadChannel, P2PStats } from './types/stats'
 
 /** P2P 统计引擎 */
 export class P2PStatsEngine {

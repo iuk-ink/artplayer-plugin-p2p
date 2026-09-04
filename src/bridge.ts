@@ -26,7 +26,7 @@ type LooseEventListener = (name: string, listener: (...args: unknown[]) => void)
  *
  * @param art - ArtPlayer 实例
  * @param engine - HlsJsP2PEngine 引擎实例
- * @param stats - 统计引擎实例
+ * @param stats - 统计引擎
  */
 export function attachEventBridge(
   art: Artplayer,

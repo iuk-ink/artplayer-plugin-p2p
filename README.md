@@ -14,18 +14,12 @@
 ## 特性
 
 - **无损动态开关**：运行时切换 P2P / 仅上传模式，不销毁 hls.js 实例、不断流、不重新缓冲
-
 - **模式保持**：换源、重连、fatal 自愈重建后开关状态不丢失
-
 - **三级自愈**：网络级重启加载 → 媒体级软恢复 → 有界销毁重建；重试上限可配置，耗尽后发出 `p2p:fatalError` 交由宿主决策
-
-- **统计可观测**：速率 / 占比 / Peers / 累计流量，面板与 `getStats()` 双通道
-
+- **统计可观测**：速率 / 占比 / Peers / 累计流量；右上角徽章、右键面板、`onStatsTick` 订阅与 `getStats()` 多通道
 - **全量透传**：p2p-media-loader 与 hls.js 配置原样透传，无私有黑盒
-
 - **类型完备**：全部选项、句柄与 15 个引擎 `p2p:*` 事件均有 TypeScript 类型
-
-- **UI 可选**：统计面板 / 设置开关组 / 单项开关均可独立开关
+- **UI 可选**：统计面板 / 右上角徽章 / 设置开关组 / 单项开关均可独立开关
 
 ## 安装
 
@@ -83,25 +77,26 @@ artplayerPluginP2P({
 
 ### 插件选项 `P2POptions`
 
-| 字段                  | 类型                        | 默认值      | 说明                                                          |
-| ------------------- | ------------------------- | -------- | ----------------------------------------------------------- |
-| `type`              | `string`                  | `'m3u8'` | customType 注册的格式名（换源重入的识别键）                                 |
-| `enabled`           | `boolean`                 | `true`   | P2P 加速初始状态                                                  |
-| `uploadEnabled`     | `boolean`                 | `true`   | 上传开关初始状态（false = 仅下载）                                       |
-| `stats`             | `boolean`                 | `true`   | 统计面板 + 右键「P2P 统计」入口；false 时仅可编程读取                           |
-| `fatalRetryMax`     | `number`                  | `2`      | fatal 错误销毁重建的最大次数                                           |
-| `core`              | `Partial<CoreConfig>`     | —        | p2p-media-loader core 配置，原样透传；`isP2PDisabled` / `isP2PUploadDisabled` 由插件开关状态接管 |
-| `tracker`           | `P2PTrackerOptions`       | —        | 信令服务器快捷配置组（字段与 core 同名），与 `core` 浅合并且优先                    |
-| `hls`               | `Partial<HlsConfig>`      | —        | hls.js 配置，原样透传                                             |
-| `ui`                | `boolean \| P2PUIOptions` | `true`   | UI 总闸；`false` 关闭全部 UI 组件                                    |
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `type` | `string` | `'m3u8'` | customType 注册的格式名（换源重入的识别键） |
+| `enabled` | `boolean` | `true` | P2P 加速初始状态 |
+| `uploadEnabled` | `boolean` | `true` | 上传开关初始状态（false = 仅下载） |
+| `stats` | `boolean` | `true` | 统计展示总开关：右键「P2P 统计」入口 + 面板 + 右上角徽章；false 时仅可编程读取 |
+| `badge` | `boolean` | `false` | 右上角 P2P 数据徽章初始显示状态（受 ui / stats 总闸约束） |
+| `fatalRetryMax` | `number` | `2` | fatal 错误销毁重建的最大次数 |
+| `core` | `Partial<CoreConfig>` | — | p2p-media-loader core 配置，原样透传；`isP2PDisabled` / `isP2PUploadDisabled` 由插件开关状态接管 |
+| `tracker` | `P2PTrackerOptions` | — | 信令服务器快捷配置组（字段与 core 同名），与 `core` 浅合并且优先 |
+| `hls` | `Partial<HlsConfig>` | — | hls.js 配置，原样透传 |
+| `ui` | `boolean \| P2PUIOptions` | `true` | UI 总闸；`false` 关闭全部 UI 组件 |
 
 > `core` 的动态子集（时间窗 / 超时 / 并发数 / 开关等）可经句柄 `applyDynamicConfig()` 在播放中调整；
 > `swarmId` 等静态属性由 p2p-media-loader 防篡改，hls.js 配置仅在实例创建时生效。
 
 ### UI 选项 `P2PUIOptions`
 
-| 字段        | 类型                                  | 默认值    | 说明        |
-| --------- | ----------------------------------- | ------ | --------- |
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
 | `setting` | `boolean \| P2PSettingItemsOptions` | `true` | 设置开关组显示配置 |
 
 设置开关组支持**按项选择性显示**：
@@ -118,7 +113,7 @@ interface P2PSettingItemsOptions {
   p2pEnabled?: boolean
   /** 「仅上传模式」开关 */
   uploadOnly?: boolean
-  /** 「P2P 统计」开关（stats: false 时无面板可开，此项不生效） */
+  /** 「P2P 统计」开关（控制右上角 P2P 数据徽章的显示；stats: false 时无徽章可开，此项不生效） */
   stats?: boolean
 }
 ```
@@ -141,17 +136,22 @@ artplayerPluginP2P({
 const handle = art.plugins.artplayerPluginP2P
 ```
 
-| 成员                                     | 说明                                               |
-| -------------------------------------- | ------------------------------------------------ |
-| `setP2PEnabled(value)`                 | 无损切换 P2P 加速（不断流、不重建实例）                           |
-| `setUploadEnabled(value)`              | 无损切换上传开关                                         |
-| `isP2PEnabled()` / `isUploadEnabled()` | 读取当前开关状态                                         |
-| `applyDynamicConfig(config)`           | 运行时调整 p2p-media-loader 动态配置                      |
-| `getStats()`                           | 统计快照（速率 / 占比 / 峰值 / 累计流量）                        |
-| `reload()`                             | 按当前配置重建（保持开关状态与原始 URL）                           |
-| `destroy()`                            | 销毁当前播放实例（播放器销毁时引擎随之自动释放）                         |
-| `hls`                                  | 当前 hls.js 实例（可与 artplayer-plugin-hls-control 协作） |
-| `engine`                               | 当前 p2p-media-loader 引擎实例                         |
+| 成员 | 说明 |
+| --- | --- |
+| `name` | 插件名（ArtPlayer 挂载键） |
+| `setP2PEnabled(value)` | 无损切换 P2P 加速（不断流、不重建实例） |
+| `setUploadEnabled(value)` | 无损切换上传开关 |
+| `isP2PEnabled()` / `isUploadEnabled()` | 读取当前开关状态 |
+| `setBadgeVisible(visible)` / `isBadgeVisible()` | 程序化控制右上角数据徽章显隐与读取显示状态（无 UI 时静默 / 恒 false） |
+| `onStatsTick(callback)` | 订阅统计心跳（1Hz 快照推送）；返回取消订阅函数，headless 场景可替代外部轮询 |
+| `applyDynamicConfig(config)` | 运行时调整 p2p-media-loader 动态配置 |
+| `getStats()` | 统计快照（速率 / 占比 / 峰值 / 累计流量） |
+| `reload()` | 按当前配置重建（保持开关状态与原始 URL） |
+| `destroy()` | 销毁当前播放实例（播放器销毁时引擎随之自动释放） |
+| `hls` | 当前 hls.js 实例（可与 artplayer-plugin-hls-control 协作） |
+| `engine` | 当前 p2p-media-loader 引擎实例 |
+
+工厂静态成员：`artplayerPluginP2P.version`（版本号）与 `artplayerPluginP2P.DEBUG`（调试日志开关，置 `true` 后输出插件装配细节，默认静默；`console.warn` 的错误级诊断不受其控制）。装配细节在播放器创建时一次性输出，需先开启再创建播放器。
 
 ## 事件
 
@@ -163,35 +163,35 @@ art.on('p2p:peerConnect', (details) => { /* ... */ })
 art.on('p2p:stateChange', ({ p2pEnabled, uploadEnabled }) => { /* ... */ })
 ```
 
-| 分类     | 事件                                                                                                                        |
-| ------ | -------------------------------------------------------------------------------------------------------------------------- |
-| 流注册   | `p2p:streamAdded` `p2p:streamRegistrationError`                                                                             |
-| 分片生命周期 | `p2p:segmentStart` `p2p:segmentLoaded` `p2p:segmentError` `p2p:segmentAbort`                                              |
-| 下载计数   | `p2p:chunkDownloaded` `p2p:chunkUploaded`                                                                                  |
-| 对等网络   | `p2p:peerConnect` `p2p:peerConnectError` `p2p:peerClose` `p2p:peerError` `p2p:peerWarning`                                  |
-| 信令     | `p2p:trackerError` `p2p:trackerWarning`                                                                                      |
-| 插件自身   | `p2p:stateChange`（开关切换）`p2p:fatalError`（fatal 通知与重建耗尽）                                                                     |
+| 分类 | 事件 |
+| --- | --- |
+| 流注册 | `p2p:streamAdded` `p2p:streamRegistrationError` |
+| 分片生命周期 | `p2p:segmentStart` `p2p:segmentLoaded` `p2p:segmentError` `p2p:segmentAbort` |
+| 下载计数 | `p2p:chunkDownloaded` `p2p:chunkUploaded` |
+| 对等网络 | `p2p:peerConnect` `p2p:peerConnectError` `p2p:peerClose` `p2p:peerError` `p2p:peerWarning` |
+| 信令 | `p2p:trackerError` `p2p:trackerWarning` |
+| 插件自身 | `p2p:stateChange`（开关切换）`p2p:fatalError`（fatal 通知与重建耗尽） |
 
 ## 纯逻辑入口
 
 ```js
-import { resolveOptions, applyRuntimeToggle, P2PStatsEngine } from 'artplayer-plugin-p2p/pure'
+import { resolveOptions, applyRuntimeToggle, P2PStatsEngine, StatsTicker } from 'artplayer-plugin-p2p/pure'
 ```
 
-不引入 hls.js / DOM 依赖，可在 Node 环境直接使用（统计引擎、带宽计算、选项解析）。
+不引入 hls.js / DOM 依赖，可在 Node 环境直接使用（统计引擎、带宽计算、选项解析、统计心跳）。
 
 ## 开发
 
 ```bash
-npm install
-npm run build      # 构建（IIFE 产物自动同步至 demo/vendor）
-npm test           # 聚合测试（pure 单测 + 产物冒烟；需先 npm run build）
-npm run typecheck  # 类型检查
+npm install        # 仅允许 npm 安装（preinstall 守卫，防包管理器混装）
+npm run build      # 构建（rolldown，原子落盘；IIFE 自动同步至 demo/vendor，demo.ts 转译）
+npm test           # 聚合测试（pure 单测 + UI 装配矩阵 + README 一致性 + 产物冒烟；需先 npm run build）
+npm run typecheck  # 类型检查（src + demo）
 ```
 
-`demo/` 为自包含演示页：插件产物随仓库提交至 `demo/vendor/`，
-克隆仓库后直接双击 `demo/index.html` 即可体验；重新执行 `npm run build`
-会自动同步最新产物（构建钩子复制，无需手动维护）。
+`demo/` 为自包含演示页：`demo/demo.ts` 为类型约束下的源码（构建时转译为
+`demo.js` 并同步 IIFE 产物至 `demo/vendor/`），克隆仓库后直接双击
+`demo/index.html` 即可体验。
 
 ## License
 

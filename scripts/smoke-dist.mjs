@@ -1,14 +1,16 @@
 /**
- * 构建产物冒烟验证脚本
+ * 构建产物冒烟测试脚本
  *
  * 对四类产物做黑盒加载验证（不依赖浏览器环境）：
  * 1. ESM pure 产物：导出面完整性
  * 2. ESM 主产物：mock 播放器的入口组装级验证
- *    （customType 注册 / 句柄契约 / 无实例时的开关与调参语义 / destroy 幂等）
+ *    （静态成员 / customType 注册 / 句柄契约 / 无实例时的
+ *    开关与调参语义 / destroy 幂等）
  * 3. CJS 主产物：require 互操作性 + 同一套组装断言
- * 4. IIFE 产物：全局自挂载
+ * 4. IIFE 产物：全局自挂载 + 静态成员 + 面板显隐解耦规则
  *
- * 入口组装验证使用 { ui: false } 绕开 DOM（UI 行为由 demo 验收清单覆盖）；
+ * 入口组装验证使用 { ui: false } 绕开 DOM（UI 装配矩阵由
+ * test-ui.mjs 的 jsdom 断言覆盖）；
  * mock 播放器仅提供入口流程触达的最小表面
  *
  * 结果输出到 output/smoke-dist-<时间戳>.json，进程自动退出
@@ -25,13 +27,6 @@ const OUTPUT_DIR = 'output'
 /** 断言记录（name / pass / detail），失败不中断，最终汇总判定 */
 const assertions = []
 
-/**
- * 记录一条断言
- *
- * @param {string} name 断言名称
- * @param {boolean} pass 断言结果
- * @param {unknown} detail 断言上下文数据
- */
 function record(name, pass, detail) {
   assertions.push({ name, pass: Boolean(pass), detail: detail ?? null })
 }
@@ -40,8 +35,6 @@ function record(name, pass, detail) {
  * 创建入口流程所需的最小 mock 播放器
  *
  * emit 记录派发事件，供 p2p:stateChange 事件断言使用
- *
- * @returns {{ art: Record<string, unknown>, customType: Record<string, unknown>, events: Array<[string, unknown[]]> }} 播放器、customType 表与事件流水
  */
 function createMockArt() {
   const customType = {}
@@ -70,6 +63,14 @@ function createMockArt() {
  */
 function testEntryAssembly(label, factory) {
   const { art, customType, events } = createMockArt()
+
+  // 工厂静态成员（version 由构建 define 注入，DEBUG 为调试日志开关）：
+  // define 缺失时模块顶层会抛 ReferenceError，此处断言提供明确报因
+  record(
+    `${label}: version 注入且 DEBUG 开关可用`,
+    typeof factory.version === 'string' && factory.version.length > 0 && typeof factory.DEBUG === 'boolean',
+    { version: factory.version, debug: factory.DEBUG },
+  )
 
   const pluginFunction = factory({ ui: false })
   record(`${label}: 工厂返回插件函数`, typeof pluginFunction === 'function', typeof pluginFunction)
@@ -104,6 +105,16 @@ function testEntryAssembly(label, factory) {
   handle.applyDynamicConfig({ httpDownloadTimeWindow: 60 })
   record(`${label}: 无实例时动态调参静默`, true)
 
+  // 无 UI（ui:false）时徽章未挂载：程序化控制静默、状态恒为不可见
+  handle.setBadgeVisible(true)
+  record(`${label}: 无 UI 时 setBadgeVisible 静默且恒不可见`, handle.isBadgeVisible() === false, handle.isBadgeVisible())
+
+  // onStatsTick：订阅返回退订函数，退订幂等
+  const unsubscribe = handle.onStatsTick(() => {})
+  record(`${label}: onStatsTick 返回退订函数`, typeof unsubscribe === 'function', typeof unsubscribe)
+  unsubscribe()
+  unsubscribe()
+
   handle.setP2PEnabled(true)
   handle.setUploadEnabled(true)
   record(`${label}: 开关恢复`, handle.isP2PEnabled() === true && handle.isUploadEnabled() === true)
@@ -129,6 +140,7 @@ try {
       'applyRuntimeToggle',
       'BandwidthCalculator',
       'P2PStatsEngine',
+      'StatsTicker',
     ].every(key => key in pure),
     Object.keys(pure).sort(),
   )
@@ -149,6 +161,14 @@ try {
 
   require('../dist/artplayer-plugin-p2p.iife.js')
   record('iife.js: 全局自挂载为可调用工厂', typeof globalThis.artplayerPluginP2P === 'function', typeof globalThis.artplayerPluginP2P)
+
+  // 工厂静态成员（version 由构建 define 注入，DEBUG 为调试日志开关）
+  const factoryStatics = globalThis.artplayerPluginP2P
+  record(
+    'iife.js: version 注入且 DEBUG 开关可用',
+    typeof factoryStatics.version === 'string' && factoryStatics.version.length > 0 && typeof factoryStatics.DEBUG === 'boolean',
+    { version: factoryStatics.version, debug: factoryStatics.DEBUG },
+  )
 
   // 面板显隐与官方 class 解耦的规则必须进入交付产物（回归防护：
   // 缺失时官方 .art-info-show 联动会强制显示 P2P 面板且无法关闭）

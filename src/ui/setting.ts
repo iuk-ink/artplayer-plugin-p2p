@@ -5,15 +5,16 @@
  * - P2P 加速：经 controller.setP2PEnabled 无损动态切换，返回值由
  *   ArtPlayer 在 await 完成后渲染开关态
  * - 仅上传模式：开关语义与上传开关互补（开启 = 关闭上传），仅信令广播
- * - P2P 统计：控制统计面板显隐；面板经 [x] 关闭时开关状态同步回退
+ * - P2P 统计：控制右上角数据徽章显隐；徽章隐藏时开关状态同步回退
  *
  * @module ui/setting
  */
 
 import type Artplayer from 'artplayer'
 import type { P2PController } from '../controller'
-import type { P2PSettingItemsOptions } from '../types'
-import type { StatsPanelHandle } from './stats-menu'
+import type { P2PSettingItemsOptions } from '../types/options'
+import { log } from '../debug'
+import type { StatsBadgeHandle } from './stats-badge'
 
 /**
  * 设置项图标（24×24 viewBox，fill 跟随面板文字色）
@@ -34,23 +35,24 @@ const ICON_STATS
  * 挂载设置面板 P2P 配置组
  *
  * 宿主未开启 option.setting 时 Setting 容器不渲染，
- * 跳过挂载并提示（统计面板仍可经右键菜单打开）。
- * 各开关按 items 配置选择性挂载，全部被隐藏时不挂载任何项
+ * 跳过挂载（属正常配置路径，静默处理；右上角徽章不受
+ * 此门控影响，仍可经 badge 选项启用）。各开关按 items
+ * 配置选择性挂载，全部被隐藏时不挂载任何项
  *
  * @param art - ArtPlayer 实例
  * @param controller - 生命周期控制器
- * @param panel - 统计面板控制接口（stats 关闭时传 null）
+ * @param badge - 右上角数据徽章控制接口（stats 关闭时传 null）
  * @param items - 单项显示配置（已由 resolveOptions 填充默认值）
  * @returns 是否实际挂载了至少一项
  */
 export function mountP2PSettings(
   art: Artplayer,
   controller: P2PController,
-  panel: StatsPanelHandle | null,
+  badge: StatsBadgeHandle | null,
   items: P2PSettingItemsOptions,
 ): boolean {
   if (!art.option.setting) {
-    console.info('[artplayer-plugin-p2p] option.setting 未开启，跳过 P2P 设置开关挂载')
+    log('option.setting disabled, P2P setting items skipped (badge remains available)')
     return false
   }
 
@@ -88,27 +90,27 @@ export function mountP2PSettings(
     mounted += 1
   }
 
-  if (panel && items.stats) {
-    const panelItem = {
+  if (badge && items.stats) {
+    const badgeItem = {
       name: 'artp2pStatsSetting',
       html: 'P2P 统计',
       tooltip: 'P2P 统计',
       icon: ICON_STATS,
-      switch: panel.isOpen(),
+      switch: badge.isVisible(),
       onSwitch(item: { switch?: boolean }) {
         const next = !item.switch
         if (next) {
-          panel.open()
+          badge.show()
         } else {
-          panel.close()
+          badge.hide()
         }
         return next
       },
     }
-    art.setting.add(panelItem)
-    // 面板经 [x] 关闭（或 open/close）时同步开关渲染态
-    panel.onVisibilityChange((open) => {
-      panelItem.switch = open
+    art.setting.add(badgeItem)
+    // 徽章显隐变化时同步开关渲染态（switch 访问器赋值即更新 DOM）
+    badge.onVisibilityChange((visible) => {
+      badgeItem.switch = visible
     })
     mounted += 1
   }

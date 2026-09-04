@@ -2,7 +2,7 @@
  * pure 层单元测试脚本
  *
  * 覆盖无浏览器依赖的核心逻辑：
- * 1. resolveOptions：默认值填充与 stats / ui 降级兼容矩阵
+ * 1. resolveOptions：默认值填充与 stats / ui / badge 降级兼容矩阵
  * 2. mergeCoreConfig：core 与 tracker 浅合并优先级
  * 3. applyRuntimeToggle：运行时开关对 core 同名字段的接管语义
  * 4. P2PStatsEngine：分类累加 / 非负保护 / 派生指标 / 重置语义
@@ -56,7 +56,7 @@ function recordFields(name, resolved, expected) {
   record(name, mismatches.length === 0, mismatches)
 }
 
-/** resolveOptions：默认值与 stats / ui 降级兼容矩阵 */
+/** resolveOptions：默认值与 stats / ui / badge 降级兼容矩阵 */
 function testResolveOptions() {
   const defaults = resolveOptions({})
   recordFields('resolve: 全默认', defaults, {
@@ -66,6 +66,7 @@ function testResolveOptions() {
     uploadEnabled: true,
     uiEnabled: true,
     statsEnabled: true,
+    badgeEnabled: false,
     settingEnabled: true,
   })
 
@@ -79,6 +80,7 @@ function testResolveOptions() {
   recordFields('resolve: ui=false 总闸全关', uiFalse, {
     uiEnabled: false,
     statsEnabled: false,
+    badgeEnabled: false,
     settingEnabled: false,
   })
 
@@ -86,6 +88,7 @@ function testResolveOptions() {
   recordFields('resolve: 对象形式仅关设置组', uiSettingOff, {
     uiEnabled: true,
     statsEnabled: true,
+    badgeEnabled: false,
     settingEnabled: false,
   })
 
@@ -93,6 +96,7 @@ function testResolveOptions() {
   recordFields('resolve: stats=false 仅关统计展示', statsOff, {
     uiEnabled: true,
     statsEnabled: false,
+    badgeEnabled: false,
     settingEnabled: true,
   })
 
@@ -133,6 +137,27 @@ function testResolveOptions() {
     uploadOnly: false,
     stats: false,
   })
+}
+
+/** resolveOptions：badge 徽章选项解析与门控 */
+function testResolveBadge() {
+  const defaults = resolveOptions({})
+  recordFields('badge: 默认关闭', defaults, { badgeEnabled: false })
+
+  const badgeOn = resolveOptions({ badge: true })
+  recordFields('badge: true 时初始显示', badgeOn, { badgeEnabled: true })
+
+  const badgeOff = resolveOptions({ badge: false })
+  recordFields('badge: false 显式关闭', badgeOff, { badgeEnabled: false })
+
+  const uiOff = resolveOptions({ badge: true, ui: false })
+  recordFields('badge: ui 总闸压过 badge', uiOff, { badgeEnabled: false })
+
+  const statsOff = resolveOptions({ badge: true, stats: false })
+  recordFields('badge: stats 总闸压过 badge', statsOff, { badgeEnabled: false })
+
+  const settingOff = resolveOptions({ badge: true, ui: { setting: false } })
+  recordFields('badge: ui.setting 不影响 badge', settingOff, { badgeEnabled: true })
 }
 
 /** mergeCoreConfig：core 与 tracker 浅合并优先级 */
@@ -247,6 +272,7 @@ function testEventBridgeMap() {
 const startTime = Date.now()
 try {
   testResolveOptions()
+  testResolveBadge()
   testMergeCoreConfig()
   testApplyRuntimeToggle()
   testStatsEngine()

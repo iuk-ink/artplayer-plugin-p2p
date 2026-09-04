@@ -15,20 +15,15 @@
     "url": "https://github.com/iuk-ink/artplayer-plugin-p2p/issues"
   },
   "sideEffects": false,
+  "packageManager": "npm@12.0.2",
   "exports": {
     ".": {
-      "types": {
-        "import": "./dist/index.d.mts",
-        "require": "./dist/index.d.ts"
-      },
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
     "./pure": {
-      "types": {
-        "import": "./dist/pure.d.mts",
-        "require": "./dist/pure.d.ts"
-      },
+      "types": "./dist/pure.d.ts",
       "import": "./dist/pure.mjs",
       "require": "./dist/pure.js"
     }
@@ -42,10 +37,12 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.demo.json",
     "test": "node scripts/test-plugin.mjs",
     "test:pure": "node scripts/test-pure.mjs",
+    "test:ui": "node --conditions=p2pml:core-as-bundle scripts/test-ui.mjs",
+    "test:docs": "node scripts/test-docs.mjs",
     "smoke:dist": "node --conditions=p2pml:core-as-bundle scripts/smoke-dist.mjs",
     "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
@@ -53,7 +50,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.18"
   },
   "dependencies": {
     "p2p-media-loader-core": "^4.0.0",
@@ -67,8 +64,10 @@
     "@types/node": "^26.4.1",
     "artplayer": "^5.4.0",
     "hls.js": "^1.7.2",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "jsdom": "^30.0.1",
+    "rolldown": "^1.2.7",
+    "rolldown-plugin-dts": "^0.28.5",
+    "typescript": "^7.0.2"
   },
   "keywords": [
     "artplayer",
